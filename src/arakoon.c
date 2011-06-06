@@ -30,6 +30,8 @@
 #define ARAKOON_PROTOCOL_STRING_LEN(n) \
         (ARAKOON_PROTOCOL_UINT32_LEN + n)
 #define ARAKOON_PROTOCOL_BOOL_LEN (sizeof(char))
+#define ARAKOON_PROTOCOL_STRING_OPTION_LEN(s, l) \
+        (sizeof(char) + ((s == NULL) ? 0 : ARAKOON_PROTOCOL_STRING_LEN(l)))
 
 #define ARAKOON_PROTOCOL_WRITE_COMMAND(a, n0, n1)   \
         STMT_START                                  \
@@ -57,6 +59,20 @@
         ARAKOON_PROTOCOL_WRITE_UINT32(a, n);   \
         memcpy(a, s, n);                       \
         a += n;                                \
+        STMT_END
+
+#define ARAKOON_PROTOCOL_WRITE_STRING_OPTION(a, s, n)               \
+        STMT_START                                                  \
+        if(s == NULL && n != 0) {                                   \
+                log_error("Passed NULL string, but size != 0");     \
+        }                                                           \
+        if(s == NULL) {                                             \
+                ARAKOON_PROTOCOL_WRITE_BOOL(a, ARAKOON_BOOL_FALSE); \
+        }                                                           \
+        else {                                                      \
+                ARAKOON_PROTOCOL_WRITE_BOOL(a, ARAKOON_BOOL_TRUE);  \
+                ARAKOON_PROTOCOL_WRITE_STRING(a, s, n);             \
+        }                                                           \
         STMT_END
 
 #define ARAKOON_PROTOCOL_WRITE_BOOL(a, b)                                                   \
@@ -189,6 +205,82 @@
         }                                                                              \
         STMT_END
 
+#define ARAKOON_PROTOCOL_READ_STRING_LIST(fd, a, rc)                                         \
+        STMT_START                                                                           \
+        uint32_t _rsl_cnt = 0, _rsl_i = 0;                                                   \
+        arakoon_rc _rsl_rc = 0;                                                              \
+        void *_rsl_s = NULL;                                                                 \
+        size_t _rsl_l = 0;                                                                   \
+                                                                                             \
+        ARAKOON_PROTOCOL_READ_UINT32(fd, _rsl_cnt, _rsl_rc);                                 \
+        if(ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                                                 \
+                for(_rsl_i = 0; _rsl_i < _rsl_cnt; _rsl_i++) {                               \
+                        _rsl_l = 0;                                                          \
+                        _rsl_s = NULL;                                                       \
+                        ARAKOON_PROTOCOL_READ_STRING(fd, _rsl_s, _rsl_l, _rsl_rc);           \
+                                                                                             \
+                        if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                                \
+                                break;                                                       \
+                        }                                                                    \
+                        else {                                                               \
+                                /* TODO This introduces a useless memcpy */                  \
+                                _rsl_rc = arakoon_value_list_prepend(a, _rsl_l, _rsl_s);     \
+                                arakoon_mem_free(_rsl_s);                                    \
+                                                                                             \
+                                if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                        \
+                                        break;                                               \
+                                }                                                            \
+                        }                                                                    \
+                }                                                                            \
+        }                                                                                    \
+                                                                                             \
+        rc = _rsl_rc;                                                                        \
+        STMT_END
+
+#define ARAKOON_PROTOCOL_READ_STRING_STRING_LIST(fd, a, rc)                                      \
+        STMT_START                                                                               \
+        uint32_t _rsl_cnt = 0, _rsl_i = 0;                                                       \
+        arakoon_rc _rsl_rc = 0;                                                                  \
+        void *_rsl_s0 = NULL, *_rsl_s1 = NULL;                                                   \
+        size_t _rsl_l0 = 0, _rsl_l1 = 0;                                                         \
+                                                                                                 \
+        ARAKOON_PROTOCOL_READ_UINT32(fd, _rsl_cnt, _rsl_rc);                                     \
+        if(ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                                                     \
+                for(_rsl_i = 0; _rsl_i < _rsl_cnt; _rsl_i++) {                                   \
+                        _rsl_l0 = 0;                                                             \
+                        _rsl_s0 = NULL;                                                          \
+                        _rsl_l1 = 0;                                                             \
+                        _rsl_s1 = NULL;                                                          \
+                                                                                                 \
+                        ARAKOON_PROTOCOL_READ_STRING(fd, _rsl_s0, _rsl_l0, _rsl_rc);             \
+                                                                                                 \
+                        if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                                    \
+                                break;                                                           \
+                        }                                                                        \
+                        else {                                                                   \
+                                ARAKOON_PROTOCOL_READ_STRING(fd, _rsl_s1, _rsl_l1, _rsl_rc);     \
+                                if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                            \
+                                        arakoon_mem_free(_rsl_s0);                               \
+                                        break;                                                   \
+                                }                                                                \
+                                else {                                                           \
+                                        /* TODO This introduces a useless memcpy */              \
+                                        _rsl_rc = arakoon_key_value_list_prepend(a,              \
+                                                _rsl_l0, _rsl_s0, _rsl_l1, _rsl_s1);             \
+                                        arakoon_mem_free(_rsl_s0);                               \
+                                        arakoon_mem_free(_rsl_s1);                               \
+                                                                                                 \
+                                        if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                    \
+                                                break;                                           \
+                                        }                                                        \
+                                }                                                                \
+                        }                                                                        \
+                }                                                                                \
+        }                                                                                        \
+                                                                                                 \
+        rc = _rsl_rc;                                                                            \
+        STMT_END
+
 
 const char * arakoon_strerror(arakoon_rc n) {
         if(ARAKOON_RC_IS_ERRNO(n)) {
@@ -237,25 +329,22 @@ void arakoon_log_set_handler(const ArakoonLogHandler handler) {
         log_handler = handler;
 }
 
-static void log_va(ArakoonLogLevel level, const char *format, va_list args) {
-        char buffer[1024];
-
-        if(log_handler == NULL) {
-                return;
-        }
-
-        vsnprintf(buffer, 1024, format, args);
-        buffer[1023] = '\0';
-
-        log_handler(level, buffer);
-}
-
-#define DEFINE_LOG_FUNCTION(n, l)                \
-        static void n(const char *format, ...) { \
-                va_list args;                    \
-                va_start(args, format);          \
-                log_va(l, format, args);         \
-                va_end(args);                    \
+#define DEFINE_LOG_FUNCTION(n, l)                      \
+        static void n(const char *format, ...) {       \
+                va_list args;                          \
+                char buffer[1024];                     \
+                va_start(args, format);                \
+                                                       \
+                if(log_handler == NULL) {              \
+                        return;                        \
+                }                                      \
+                                                       \
+                vsnprintf(buffer, 1024, format, args); \
+                buffer[1023] = 0;                      \
+                                                       \
+                log_handler(l , buffer);               \
+                                                       \
+                va_end(args);                          \
         }
 
 #ifdef ENABLE_TRACE
@@ -365,6 +454,42 @@ struct _ArakoonValueListIter {
         ArakoonValueListItem *current;
 };
 
+ArakoonValueList * arakoon_value_list_new(void) {
+        ArakoonValueList *list = NULL;
+
+        list = arakoon_mem_new(1, ArakoonValueList);
+        RETURN_NULL_IF_NULL(list);
+
+        list->size = 0;
+        list->first = NULL;
+
+        return list;
+}
+
+arakoon_rc arakoon_value_list_prepend(ArakoonValueList *list,
+    const size_t value_size, const void * const value) {
+        ArakoonValueListItem *item = NULL;
+
+        item = arakoon_mem_new(1, ArakoonValueListItem);
+        RETURN_ENOMEM_IF_NULL(item);
+
+        item->value = arakoon_mem_malloc(value_size);
+        if(item->value == NULL) {
+                arakoon_mem_free(item);
+                return -ENOMEM;
+        }
+
+        item->next = list->first;
+        item->value_size = value_size;
+        memcpy(item->value, value, value_size);
+
+        list->first = item;
+        list->size = list->size + 1;
+
+        return ARAKOON_RC_SUCCESS;
+}
+
+
 size_t arakoon_value_list_size(const ArakoonValueList * const list) {
         FUNCTION_ENTER(arakoon_value_list_size);
         return list->size;
@@ -471,6 +596,57 @@ struct _ArakoonKeyValueListIter {
         ArakoonKeyValueListItem *current;
 };
 
+static ArakoonKeyValueList * arakoon_key_value_list_new(void)
+    ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_MALLOC;
+static ArakoonKeyValueList * arakoon_key_value_list_new(void) {
+        ArakoonKeyValueList *list = NULL;
+
+        list = arakoon_mem_new(1, ArakoonKeyValueList);
+        RETURN_NULL_IF_NULL(list);
+
+        list->size = 0;
+        list->first = NULL;
+
+        return list;
+}
+
+static arakoon_rc arakoon_key_value_list_prepend(ArakoonKeyValueList *list,
+    const size_t key_size, const void * const key,
+    const size_t value_size, const void * const value)
+    ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_NONNULL3(1, 3, 5);
+static arakoon_rc arakoon_key_value_list_prepend(ArakoonKeyValueList *list,
+    const size_t key_size, const void * const key,
+    const size_t value_size, const void * const value) {
+        ArakoonKeyValueListItem *item = NULL;
+
+        item = arakoon_mem_new(1, ArakoonKeyValueListItem);
+        RETURN_ENOMEM_IF_NULL(item);
+
+        item->key = arakoon_mem_malloc(key_size);
+        if(item->key == NULL) {
+                arakoon_mem_free(item);
+                return -ENOMEM;
+        }
+
+        item->value = arakoon_mem_malloc(value_size);
+        if(item->value == NULL) {
+                arakoon_mem_free(item->key);
+                arakoon_mem_free(item);
+                return -ENOMEM;
+        }
+
+        item->next = list->first;
+        item->key_size = key_size;
+        memcpy(item->key, key, key_size);
+        item->value_size = value_size;
+        memcpy(item->value, value, value_size);
+
+        list->first = item;
+        list->size = list->size + 1;
+
+        return ARAKOON_RC_SUCCESS;
+}
+
 size_t arakoon_key_value_list_size(const ArakoonKeyValueList * const list) {
         FUNCTION_ENTER(arakoon_key_value_list_size);
 
@@ -483,6 +659,8 @@ static void arakoon_key_value_list_item_free(
 
         RETURN_IF_NULL(item);
 
+        item->key_size = 0;
+        arakoon_mem_free(item->key);
         item->value_size = 0;
         arakoon_mem_free(item->value);
 
@@ -895,10 +1073,11 @@ void arakoon_cluster_free(ArakoonCluster *cluster) {
         arakoon_mem_free(cluster);
 }
 
-/*arakoon_rc arakoon_cluster_load_config(ArakoonCluster *cluster,
-    const char * const path) {
-        abort();
-}*/
+const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster) {
+        FUNCTION_ENTER(arakoon_cluster_get_name);
+
+        return cluster->name;
+}
 
 arakoon_rc arakoon_cluster_add_node(ArakoonCluster *cluster,
     const char * const name, struct addrinfo * const address) {
@@ -944,6 +1123,14 @@ arakoon_rc arakoon_cluster_add_node_tcp(ArakoonCluster *cluster,
 }
 
 /* Client operations */
+#define ASSERT_ALL_WRITTEN(command, c, len)                              \
+        STMT_START                                                       \
+        if(c != (char *)command + len) {                                 \
+                log_fatal("Unexpected number of characters in command"); \
+                abort();                                                 \
+        }                                                                \
+        STMT_END
+
 arakoon_rc arakoon_hello(ArakoonCluster *cluster,
     const char * const client_id, const char * const cluster_id,
     char ** const result) {
@@ -970,6 +1157,8 @@ arakoon_rc arakoon_hello(ArakoonCluster *cluster,
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x01, 0x00);
         ARAKOON_PROTOCOL_WRITE_STRING(c, client_id, client_id_len);
         ARAKOON_PROTOCOL_WRITE_STRING(c, cluster_id, cluster_id_len);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
 
         if(cluster->nodes->fd < 0) {
                 rc = arakoon_cluster_node_connect(cluster->nodes);
@@ -1019,6 +1208,8 @@ arakoon_rc arakoon_who_master(ArakoonCluster *cluster,
 
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x02, 0x00);
 
+        ASSERT_ALL_WRITTEN(command, c, len);
+
         if(cluster->nodes->fd < 0) {
                 rc = arakoon_cluster_node_connect(cluster->nodes);
                 if(!ARAKOON_RC_IS_SUCCESS(rc)) {
@@ -1065,6 +1256,8 @@ arakoon_rc arakoon_expect_progress_possible(ArakoonCluster *cluster,
 
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x12, 0x00);
 
+        ASSERT_ALL_WRITTEN(command, c, len);
+
         if(cluster->nodes->fd < 0) {
                 rc = arakoon_cluster_node_connect(cluster->nodes);
                 if(!ARAKOON_RC_IS_SUCCESS(rc)) {
@@ -1107,6 +1300,8 @@ arakoon_rc arakoon_exists(ArakoonCluster * const cluster,
         ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
         ARAKOON_PROTOCOL_WRITE_STRING(c, key, key_size);
 
+        ASSERT_ALL_WRITTEN(command, c, len);
+
         if(cluster->nodes->fd < 0) {
                 rc = arakoon_cluster_node_connect(cluster->nodes);
                 if(!ARAKOON_RC_IS_SUCCESS(rc)) {
@@ -1148,6 +1343,8 @@ arakoon_rc arakoon_get(ArakoonCluster *cluster, const size_t key_size,
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x08, 0x00);
         ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
         ARAKOON_PROTOCOL_WRITE_STRING(c, key, key_size);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
 
         if(cluster->nodes->fd < 0) {
                 rc = arakoon_cluster_node_connect(cluster->nodes);
@@ -1199,6 +1396,8 @@ arakoon_rc arakoon_set(ArakoonCluster *cluster, const size_t key_size,
         ARAKOON_PROTOCOL_WRITE_STRING(c, key, key_size);
         ARAKOON_PROTOCOL_WRITE_STRING(c, value, value_size);
 
+        ASSERT_ALL_WRITTEN(command, c, len);
+
         if(cluster->nodes->fd < 0) {
                 rc = arakoon_cluster_node_connect(cluster->nodes);
                 if(!ARAKOON_RC_IS_SUCCESS(rc)) {
@@ -1215,4 +1414,354 @@ arakoon_rc arakoon_set(ArakoonCluster *cluster, const size_t key_size,
         ARAKOON_PROTOCOL_READ_RC(cluster->nodes->fd, rc);
 
         return rc;
+}
+
+arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
+    const ArakoonValueList * const keys, ArakoonValueList **result) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+        ArakoonValueListItem *item = NULL;
+        char l[ARAKOON_PROTOCOL_UINT32_LEN];
+
+        FUNCTION_ENTER(arakoon_multi_get);
+
+        *result = NULL;
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN
+                + ARAKOON_PROTOCOL_UINT32_LEN;
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x11, 0x00);
+        ARAKOON_PROTOCOL_WRITE_UINT32(c, arakoon_value_list_size(keys));
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        if(cluster->nodes->fd < 0) {
+                rc = arakoon_cluster_node_connect(cluster->nodes);
+                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                        arakoon_mem_free(command);
+                }
+
+                RETURN_IF_NOT_SUCCESS(rc);
+        }
+
+        WRITE_BYTES(cluster->nodes->fd, command, len, rc);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        for(item = keys->first; item != NULL; item = item->next) {
+                *((uint32_t *)l) = item->value_size;
+                WRITE_BYTES(cluster->nodes->fd, l, ARAKOON_PROTOCOL_UINT32_LEN, rc);
+                RETURN_IF_NOT_SUCCESS(rc);
+
+                WRITE_BYTES(cluster->nodes->fd, item->value, item->value_size, rc);
+                RETURN_IF_NOT_SUCCESS(rc);
+        }
+
+        ARAKOON_PROTOCOL_READ_RC(cluster->nodes->fd, rc);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        *result = arakoon_value_list_new();
+        RETURN_ENOMEM_IF_NULL(*result);
+
+        ARAKOON_PROTOCOL_READ_STRING_LIST(cluster->nodes->fd, *result, rc);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                arakoon_value_list_free(*result);
+                *result = NULL;
+        }
+
+        return rc;
+}
+
+arakoon_rc arakoon_delete(ArakoonCluster *cluster, const size_t key_size,
+    const void * const key) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+
+        FUNCTION_ENTER(arakoon_delete);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN
+                + ARAKOON_PROTOCOL_STRING_LEN(key_size);
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x0a, 0x00);
+        ARAKOON_PROTOCOL_WRITE_STRING(c, key, key_size);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        if(cluster->nodes->fd < 0) {
+                rc = arakoon_cluster_node_connect(cluster->nodes);
+                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                        arakoon_mem_free(command);
+                }
+
+                RETURN_IF_NOT_SUCCESS(rc);
+        }
+
+        WRITE_BYTES(cluster->nodes->fd, command, len, rc);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(cluster->nodes->fd, rc);
+
+        return rc;
+}
+
+arakoon_rc arakoon_range(ArakoonCluster *cluster,
+    const size_t begin_key_size, const void * const begin_key,
+    const arakoon_bool begin_key_included,
+    const size_t end_key_size, const void * const end_key,
+    const arakoon_bool end_key_included,
+    const ssize_t max_elements,
+    ArakoonValueList **result) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+
+        FUNCTION_ENTER(arakoon_range);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN
+                + ARAKOON_PROTOCOL_BOOL_LEN
+                + ARAKOON_PROTOCOL_STRING_OPTION_LEN(begin_key, begin_key_size)
+                + ARAKOON_PROTOCOL_BOOL_LEN
+                + ARAKOON_PROTOCOL_STRING_OPTION_LEN(end_key, end_key_size)
+                + ARAKOON_PROTOCOL_BOOL_LEN
+                + ARAKOON_PROTOCOL_INT32_LEN;
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x0b, 0x00);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
+        ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, begin_key, begin_key_size);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c, begin_key_included);
+        ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, end_key, end_key_size);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c, end_key_included);
+        ARAKOON_PROTOCOL_WRITE_INT32(c, max_elements);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        if(cluster->nodes->fd < 0) {
+                rc = arakoon_cluster_node_connect(cluster->nodes);
+                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                        arakoon_mem_free(command);
+                }
+
+                RETURN_IF_NOT_SUCCESS(rc);
+        }
+
+        WRITE_BYTES(cluster->nodes->fd, command, len, rc);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(cluster->nodes->fd, rc);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                *result = NULL;
+                return rc;
+        }
+
+        *result = arakoon_value_list_new();
+        RETURN_ENOMEM_IF_NULL(*result);
+
+        ARAKOON_PROTOCOL_READ_STRING_LIST(cluster->nodes->fd, *result, rc);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                arakoon_value_list_free(*result);
+                *result = NULL;
+        }
+
+        return rc;
+}
+
+arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
+    const size_t begin_key_size, const void * const begin_key,
+    const arakoon_bool begin_key_included,
+    const size_t end_key_size, const void * const end_key,
+    const arakoon_bool end_key_included,
+    const ssize_t max_elements,
+    ArakoonKeyValueList **result) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+
+        FUNCTION_ENTER(arakoon_range_entries);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN
+                + ARAKOON_PROTOCOL_BOOL_LEN
+                + ARAKOON_PROTOCOL_STRING_OPTION_LEN(begin_key, begin_key_size)
+                + ARAKOON_PROTOCOL_BOOL_LEN
+                + ARAKOON_PROTOCOL_STRING_OPTION_LEN(end_key, end_key_size)
+                + ARAKOON_PROTOCOL_BOOL_LEN
+                + ARAKOON_PROTOCOL_INT32_LEN;
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x0f, 0x00);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
+        ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, begin_key, begin_key_size);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c, begin_key_included);
+        ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, end_key, end_key_size);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c, end_key_included);
+        ARAKOON_PROTOCOL_WRITE_INT32(c, max_elements);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        if(cluster->nodes->fd < 0) {
+                rc = arakoon_cluster_node_connect(cluster->nodes);
+                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                        arakoon_mem_free(command);
+                }
+
+                RETURN_IF_NOT_SUCCESS(rc);
+        }
+
+        WRITE_BYTES(cluster->nodes->fd, command, len, rc);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(cluster->nodes->fd, rc);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                *result = NULL;
+                return rc;
+        }
+
+        *result = arakoon_key_value_list_new();
+        RETURN_ENOMEM_IF_NULL(*result);
+
+        ARAKOON_PROTOCOL_READ_STRING_STRING_LIST(cluster->nodes->fd, *result, rc);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                arakoon_key_value_list_free(*result);
+                *result = NULL;
+        }
+
+        return rc;
+}
+
+arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
+    const size_t begin_key_size, const void * const begin_key,
+    const ssize_t max_elements,
+    ArakoonValueList **result) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+
+        FUNCTION_ENTER(arakoon_prefix);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN
+                + ARAKOON_PROTOCOL_BOOL_LEN
+                + ARAKOON_PROTOCOL_STRING_LEN(begin_key_size)
+                + ARAKOON_PROTOCOL_UINT32_LEN;
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x0c, 0x00);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
+        ARAKOON_PROTOCOL_WRITE_STRING(c, begin_key, begin_key_size);
+        ARAKOON_PROTOCOL_WRITE_INT32(c, max_elements);
+
+        if(cluster->nodes->fd < 0) {
+                rc = arakoon_cluster_node_connect(cluster->nodes);
+                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                        arakoon_mem_free(command);
+                }
+
+                RETURN_IF_NOT_SUCCESS(rc);
+        }
+
+        WRITE_BYTES(cluster->nodes->fd, command, len, rc);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(cluster->nodes->fd, rc);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                *result = NULL;
+                return rc;
+        }
+
+        *result = arakoon_value_list_new();
+        RETURN_ENOMEM_IF_NULL(*result);
+
+        ARAKOON_PROTOCOL_READ_STRING_LIST(cluster->nodes->fd, *result, rc);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                arakoon_value_list_free(*result);
+                *result = NULL;
+        }
+
+        return rc;
+}
+
+arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
+    const size_t key_size, const void * const key,
+    const size_t old_value_size, const void * const old_value,
+    const size_t new_value_size, const void * const new_value,
+    size_t *result_size, void **result) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+
+        FUNCTION_ENTER(arakoon_test_and_set);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN
+                + ARAKOON_PROTOCOL_STRING_LEN(key_size)
+                + ARAKOON_PROTOCOL_STRING_OPTION_LEN(old_value, old_value_size)
+                + ARAKOON_PROTOCOL_STRING_OPTION_LEN(new_value, new_value_size);
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x0d, 0x00);
+        ARAKOON_PROTOCOL_WRITE_STRING(c, key, key_size);
+        ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, old_value, old_value_size);
+        ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, new_value, new_value_size);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        if(cluster->nodes->fd < 0) {
+                rc = arakoon_cluster_node_connect(cluster->nodes);
+                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                        arakoon_mem_free(command);
+                }
+
+                RETURN_IF_NOT_SUCCESS(rc);
+        }
+
+        WRITE_BYTES(cluster->nodes->fd, command, len, rc);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(cluster->nodes->fd, rc);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_STRING_OPTION(cluster->nodes->fd, *result,
+                *result_size, rc);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                *result = NULL;
+                *result_size = 0;
+        }
+
+        return rc;
+}
+
+arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
+    const ArakoonSequence * const sequence) {
+        abort();
 }

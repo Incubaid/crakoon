@@ -26,8 +26,10 @@
 
 #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 96)
 # define ARAKOON_GNUC_MALLOC __attribute__((__malloc__))
+# define ARAKOON_GNUC_PURE __attribute__((__pure__))
 #else
 # define ARAKOON_GNUC_MALLOC
+# define ARAKOON_GNUC_PURE
 #endif
 
 #if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 3)
@@ -42,12 +44,6 @@
 # define ARAKOON_GNUC_NONNULL2(x, y)
 # define ARAKOON_GNUC_NONNULL3(x, y, z)
 # define ARAKOON_GNUC_NONNULL4(x, y, z, a)
-#endif
-
-#if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)
-# define ARAKOON_GNUC_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
-#else
-# define ARAKOON_GNUC_WARN_UNUSED_RESULT
 #endif
 
 ARAKOON_BEGIN_DECLS
@@ -135,9 +131,14 @@ void arakoon_log_set_handler(const ArakoonLogHandler handler);
  * seems fit). Concurrent iteration is not possible.
  */
 typedef struct _ArakoonValueList ArakoonValueList;
+ArakoonValueList * arakoon_value_list_new(void)
+    ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_MALLOC;
+arakoon_rc arakoon_value_list_prepend(ArakoonValueList *list,
+    const size_t value_size, const void * const value)
+    ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_NONNULL2(1, 3);
 /* Retrieve the number of items in the list */
 size_t arakoon_value_list_size(const ArakoonValueList * const list)
-    ARAKOON_GNUC_NONNULL;
+    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
 /* Free a value list
  * Note any iters over the list will become invalid after this call
  */
@@ -159,12 +160,17 @@ void arakoon_value_list_iter_next(ArakoonValueListIter * const iter,
 void arakoon_value_list_iter_reset(ArakoonValueListIter * const iter)
     ARAKOON_GNUC_NONNULL;
 
+#define FOR_ARAKOON_VALUE_ITER(i, l, v)        \
+    for(arakoon_value_list_iter_next(i, l, v); \
+        *v != NULL;                             \
+        arakoon_value_list_iter_next(i, l, v))
+
 /* Key Value list
  * Same as ValueList, but with pairs of values, sort-of
  */
 typedef struct _ArakoonKeyValueList ArakoonKeyValueList;
 size_t arakoon_key_value_list_size(const ArakoonKeyValueList * const list)
-    ARAKOON_GNUC_NONNULL;
+    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
 void arakoon_key_value_list_free(ArakoonKeyValueList * const list);
 
 typedef struct _ArakoonKeyValueListIter ArakoonKeyValueListIter;
@@ -180,6 +186,10 @@ void arakoon_key_value_list_iter_next(ArakoonKeyValueListIter * const iter,
 void arakoon_key_value_list_iter_reset(ArakoonKeyValueListIter * const iter)
     ARAKOON_GNUC_NONNULL;
 
+#define FOR_ARAKOON_KEY_VALUE_ITER(i, kl, k, vl, v)        \
+    for(arakoon_key_value_list_iter_next(i, kl, k, vl, v); \
+        (*k != NULL && *v != NULL);                          \
+        arakoon_key_value_list_iter_next(i, kl, k, vl, v))
 
 /* Sequence support */
 typedef struct _ArakoonSequence ArakoonSequence;
@@ -208,10 +218,8 @@ ArakoonCluster * arakoon_cluster_new(const char * const name)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_MALLOC
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
 void arakoon_cluster_free(ArakoonCluster *cluster);
-
-arakoon_rc arakoon_cluster_load_config(ArakoonCluster *cluster,
-    const char * const path) ARAKOON_GNUC_NONNULL2(1, 2)
-    ARAKOON_GNUC_WARN_UNUSED_RESULT;
+const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster)
+    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
 
 arakoon_rc arakoon_cluster_add_node(ArakoonCluster *cluster,
     const char * const name, struct addrinfo * const address)
@@ -241,8 +249,8 @@ arakoon_rc arakoon_get(ArakoonCluster *cluster, const size_t key_size,
     const void * const key, size_t *result_size, void **result)
     ARAKOON_GNUC_NONNULL4(1, 3, 4, 5) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
-    const unsigned int num_keys, const void ** const keys,
-    ArakoonValueList **result);
+    const ArakoonValueList * const keys, ArakoonValueList **result)
+    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
 arakoon_rc arakoon_set(ArakoonCluster *cluster, const size_t key_size,
     const void * const key, const size_t value_size,
     const void * const value) ARAKOON_GNUC_NONNULL3(1, 3, 5)
@@ -256,7 +264,7 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
     const size_t end_key_size, const void * const end_key,
     const arakoon_bool end_key_included,
     const ssize_t max_elements, /* TODO Use int ? */
-    ArakoonValueList **result) ARAKOON_GNUC_NONNULL4(1, 3, 6, 9)
+    ArakoonValueList **result) ARAKOON_GNUC_NONNULL2(1, 9)
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
 arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
     const size_t begin_key_size, const void * const begin_key,
@@ -264,7 +272,7 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
     const size_t end_key_size, const void * const end_key,
     const arakoon_bool end_key_included,
     const ssize_t max_elements, /* TODO Use int ? */
-    ArakoonKeyValueList **result) ARAKOON_GNUC_NONNULL4(1, 3, 6, 9)
+    ArakoonKeyValueList **result) ARAKOON_GNUC_NONNULL2(1, 9)
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
 arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
     const size_t begin_key_size, const void * const begin_key,

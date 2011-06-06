@@ -3,6 +3,8 @@
 *.la
 
 tests/check_arakoon
+tests/check_memory
+tests/test_arakoon_client
 
 Makefile
 Makefile.in
