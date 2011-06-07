@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
         char *s0 = NULL, *s1 = NULL;
         ArakoonSequence *seq = NULL;
 
-        ArakoonMemoryHooks hooks = {
+        const ArakoonMemoryHooks hooks = {
                 check_arakoon_malloc,
                 check_arakoon_free,
                 check_arakoon_realloc
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
         ABORT_IF_NOT_SUCCESS(rc);
         rc = arakoon_value_list_add(r0, 4, "foo2");
         ABORT_IF_NOT_SUCCESS(rc);
-        rc = arakoon_multi_get(c, r0, &r2);
+        rc = arakoon_multi_get(c, NULL, r0, &r2);
         ABORT_IF_NOT_SUCCESS(rc);
         arakoon_value_list_free(r0);
         iter0 = arakoon_value_list_create_iter(r2);
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
         arakoon_value_list_iter_free(iter0);
         arakoon_value_list_free(r2);
 
-        rc = arakoon_prefix(c, 1, "f", -1, &r0);
+        rc = arakoon_prefix(c, NULL, 1, "f", -1, &r0);
         ABORT_IF_NOT_SUCCESS(rc);
 
         iter0 = arakoon_value_list_create_iter(r0);
@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
         arakoon_value_list_iter_free(iter0);
         arakoon_value_list_free(r0);
 
-        rc = arakoon_range_entries(c, 0, NULL, ARAKOON_BOOL_TRUE,
+        rc = arakoon_range_entries(c, NULL, 0, NULL, ARAKOON_BOOL_TRUE,
                 0, NULL, ARAKOON_BOOL_TRUE, -1, &r1);
         ABORT_IF_NOT_SUCCESS(rc);
 
@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
         ABORT_IF_NOT_SUCCESS(rc);
         rc = arakoon_sequence_add_delete(seq, 3, "foz");
         ABORT_IF_NOT_SUCCESS(rc);
-        rc = arakoon_sequence(c, seq);
+        rc = arakoon_sequence(c, NULL, seq);
         ABORT_IF_NOT_SUCCESS(rc);
         arakoon_sequence_free(seq);
 

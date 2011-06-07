@@ -417,10 +417,45 @@ void arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks) {
         memory_hooks.realloc = hooks->realloc;
 }
 
+static void * arakoon_memory_abort_malloc(size_t s)
+        ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_MALLOC;
+static void * arakoon_memory_abort_malloc(size_t s) {
+        void *ret = NULL;
+
+        ret = malloc(s);
+
+        if(ret == NULL) {
+                abort();
+        }
+
+        return ret;
+}
+
+static void * arakoon_memory_abort_realloc(void *ptr, size_t s)
+        ARAKOON_GNUC_WARN_UNUSED_RESULT;
+static void * arakoon_memory_abort_realloc(void *ptr, size_t s) {
+        void *ret = NULL;
+
+        ret = realloc(ptr, s);
+
+        if(ret == NULL) {
+                abort();
+        }
+
+        return ret;
+}
+
+const ArakoonMemoryHooks * arakoon_memory_get_abort_hooks(void) {
+        static const ArakoonMemoryHooks hooks = {
+                arakoon_memory_abort_malloc,
+                free,
+                arakoon_memory_abort_realloc
+        };
+
+        return &hooks;
+}
+
 /* Utils */
-/**
- * \brief Turn a bunch of bytes into a proper C-string
- */
 char * arakoon_utils_make_string(void *data, size_t length) {
         char *s = NULL;
 
@@ -1210,16 +1245,69 @@ arakoon_rc arakoon_cluster_add_node_tcp(ArakoonCluster *cluster,
         return rc;
 }
 
+/* Client call options */
+struct ArakoonClientCallOptions {
+        arakoon_bool allow_dirty;
+};
+
+static const ArakoonClientCallOptions * arakoon_client_call_options_get_default(void) {
+        static const ArakoonClientCallOptions options = {
+                ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_ALLOW_DIRTY
+        };
+
+        return &options;
+}
+
+ArakoonClientCallOptions * arakoon_client_call_options_new(void) {
+        ArakoonClientCallOptions *options = NULL;
+
+        FUNCTION_ENTER(arakoon_client_call_options_new);
+
+        options = arakoon_mem_new(1, ArakoonClientCallOptions);
+        RETURN_NULL_IF_NULL(options);
+
+        memcpy(options, arakoon_client_call_options_get_default(),
+                sizeof(ArakoonClientCallOptions));
+
+        return options;
+}
+
+void arakoon_client_call_options_free(ArakoonClientCallOptions *options) {
+        FUNCTION_ENTER(arakoon_client_call_options_free);
+
+        arakoon_mem_free(options);
+}
+
+arakoon_bool arakoon_client_call_options_get_allow_dirty(
+    const ArakoonClientCallOptions * const options) {
+        FUNCTION_ENTER(arakoon_client_call_options_get_allow_dirty);
+
+        return options->allow_dirty;
+}
+
+void arakoon_client_call_options_set_allow_dirty(
+    ArakoonClientCallOptions * const options, arakoon_bool allow_dirty) {
+        FUNCTION_ENTER(arakoon_client_call_options_set_allow_dirty);
+
+        options->allow_dirty = allow_dirty;
+}
+
+
 /* Client operations */
 #define ASSERT_ALL_WRITTEN(command, c, len)                              \
         STMT_START                                                       \
-        if(c != command + len) {                                 \
+        if(c != command + len) {                                         \
                 log_fatal("Unexpected number of characters in command"); \
                 abort();                                                 \
         }                                                                \
         STMT_END
 
+#define READ_OPTIONS \
+        const ArakoonClientCallOptions *options_ = \
+                (options == NULL ? arakoon_client_call_options_get_default() : options)
+
 arakoon_rc arakoon_hello(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
     const char * const client_id, const char * const cluster_id,
     char ** const result) {
         size_t len = 0, client_id_len = 0, cluster_id_len = 0;
@@ -1278,6 +1366,7 @@ arakoon_rc arakoon_hello(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_who_master(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
     char ** const master) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
@@ -1328,7 +1417,8 @@ arakoon_rc arakoon_who_master(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_expect_progress_possible(ArakoonCluster *cluster,
-        arakoon_bool *result) {
+    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
+    arakoon_bool *result) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
@@ -1368,10 +1458,13 @@ arakoon_rc arakoon_expect_progress_possible(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_exists(ArakoonCluster * const cluster,
+    const ArakoonClientCallOptions * const options,
     const size_t key_size, const void * const key, arakoon_bool *result) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+
+        READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_exists);
 
@@ -1385,7 +1478,8 @@ arakoon_rc arakoon_exists(ArakoonCluster * const cluster,
         c = command;
 
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x07, 0x00);
-        ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c,
+                arakoon_client_call_options_get_allow_dirty(options_));
         ARAKOON_PROTOCOL_WRITE_STRING(c, key, key_size);
 
         ASSERT_ALL_WRITTEN(command, c, len);
@@ -1411,11 +1505,15 @@ arakoon_rc arakoon_exists(ArakoonCluster * const cluster,
         return rc;
 }
 
-arakoon_rc arakoon_get(ArakoonCluster *cluster, const size_t key_size,
-    const void * const key, size_t *result_size, void **result) {
+arakoon_rc arakoon_get(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key,
+    size_t *result_size, void **result) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+
+        READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_get);
 
@@ -1429,7 +1527,8 @@ arakoon_rc arakoon_get(ArakoonCluster *cluster, const size_t key_size,
         c = command;
 
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x08, 0x00);
-        ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c,
+                arakoon_client_call_options_get_allow_dirty(options_));
         ARAKOON_PROTOCOL_WRITE_STRING(c, key, key_size);
 
         ASSERT_ALL_WRITTEN(command, c, len);
@@ -1463,8 +1562,10 @@ arakoon_rc arakoon_get(ArakoonCluster *cluster, const size_t key_size,
         return rc;
 }
 
-arakoon_rc arakoon_set(ArakoonCluster *cluster, const size_t key_size,
-    const void * const key, const size_t value_size, const void * const value) {
+arakoon_rc arakoon_set(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
+    const size_t key_size, const void * const key,
+    const size_t value_size, const void * const value) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
@@ -1505,12 +1606,15 @@ arakoon_rc arakoon_set(ArakoonCluster *cluster, const size_t key_size,
 }
 
 arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
     const ArakoonValueList * const keys, ArakoonValueList **result) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
         ArakoonValueListItem *item = NULL;
         char l[ARAKOON_PROTOCOL_UINT32_LEN];
+
+        READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_multi_get);
 
@@ -1526,7 +1630,8 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
         c = command;
 
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x11, 0x00);
-        ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c,
+                arakoon_client_call_options_get_allow_dirty(options_));
         ARAKOON_PROTOCOL_WRITE_UINT32(c, arakoon_value_list_size(keys));
 
         ASSERT_ALL_WRITTEN(command, c, len);
@@ -1569,8 +1674,9 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
         return rc;
 }
 
-arakoon_rc arakoon_delete(ArakoonCluster *cluster, const size_t key_size,
-    const void * const key) {
+arakoon_rc arakoon_delete(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
+    const size_t key_size, const void * const key) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
@@ -1609,6 +1715,7 @@ arakoon_rc arakoon_delete(ArakoonCluster *cluster, const size_t key_size,
 }
 
 arakoon_rc arakoon_range(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
     const size_t begin_key_size, const void * const begin_key,
     const arakoon_bool begin_key_included,
     const size_t end_key_size, const void * const end_key,
@@ -1618,6 +1725,8 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+
+        READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_range);
 
@@ -1635,7 +1744,8 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
         c = command;
 
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x0b, 0x00);
-        ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c,
+                arakoon_client_call_options_get_allow_dirty(options_));
         ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, begin_key, begin_key_size);
         ARAKOON_PROTOCOL_WRITE_BOOL(c, begin_key_included);
         ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, end_key, end_key_size);
@@ -1676,6 +1786,7 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
     const size_t begin_key_size, const void * const begin_key,
     const arakoon_bool begin_key_included,
     const size_t end_key_size, const void * const end_key,
@@ -1685,6 +1796,8 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+
+        READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_range_entries);
 
@@ -1702,7 +1815,8 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
         c = command;
 
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x0f, 0x00);
-        ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c,
+                arakoon_client_call_options_get_allow_dirty(options_));
         ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, begin_key, begin_key_size);
         ARAKOON_PROTOCOL_WRITE_BOOL(c, begin_key_included);
         ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, end_key, end_key_size);
@@ -1743,12 +1857,15 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
     const size_t begin_key_size, const void * const begin_key,
     const ssize_t max_elements,
     ArakoonValueList **result) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+
+        READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_prefix);
 
@@ -1763,7 +1880,8 @@ arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
         c = command;
 
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x0c, 0x00);
-        ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c,
+                arakoon_client_call_options_get_allow_dirty(options_));
         ARAKOON_PROTOCOL_WRITE_STRING(c, begin_key, begin_key_size);
         ARAKOON_PROTOCOL_WRITE_INT32(c, max_elements);
 
@@ -1799,6 +1917,7 @@ arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
     const size_t key_size, const void * const key,
     const size_t old_value_size, const void * const old_value,
     const size_t new_value_size, const void * const new_value,
@@ -1853,6 +1972,7 @@ arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
     const ArakoonSequence * const sequence) {
         size_t len = 0, i = 0;
         uint32_t count = 0;

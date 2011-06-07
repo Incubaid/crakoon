@@ -7,6 +7,54 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+/* Conventions
+ * ===========
+ * Strings
+ * -------
+ * We use 2 types of string-like values in Crakoon: null-terminated C-strings,
+ * using "char *" as type, and plain chunks of memory, encoded as a pointer to
+ * this memory ("void *"), and the value size ("size_t"). Whenever we're
+ * dealing with human-readable strings, the first encoding is used (e.g. when
+ * dealing with cluster or node names). Generic byte sequences, e.g. keys or
+ * values, are encoded using the second system.
+ *
+ * Memory handling
+ * ---------------
+ * The memory handling procedures to be used by Crakoon can be set through
+ * arakoon_memory_set_hooks. The malloc, free and realloc functions can be
+ * specified. Crakoon should not use any other heap-allocation functions.
+ *
+ * The system malloc(3), free(3) and realloc(3) procedures are used as default.
+ * If possible, it is advisable to register your own heap allocation handler
+ * functions before calling any other Crakoon procedures.
+ *
+ * Whenever an allocation fails (malloc or realloc returned NULL), this is
+ * returned as-is to the caller, by returning NULL in case the procedure returns
+ * a pointer, or -ENOMEM if an arakoon_rc value is returned. When allocation
+ * fails, any out-pointers should be set to NULL as well, although one should
+ * not rely on this behaviour (always check the arakoon_rc value).
+ *
+ * If you're not interested in handling out-of-memory situations and want to
+ * abort on allocation failure, you can register simple wrappers around malloc
+ * and realloc which e.g. call abort(3) on failure.
+ *
+ * Error handling
+ * --------------
+ * Most procedures return an arakoon_rc value, which is an integer value. If
+ * this value is negative, it's an errno value. If it is equal to 0, it
+ * signifies success. A positive value is part of the ArakoonReturnCode
+ * enumeration.
+ *
+ * You can (and should!) use the ARAKOON_RC_IS_ERRNO, ARAKOON_RC_AS_ERRNO,
+ * ARAKOON_RC_IS_SUCCESS, ARAKOON_RC_IS_ARAKOONRETURNCODE and
+ * ARAKOON_RC_AS_ARAKOONRETURNCODE macros to handle arakoon_rc values.
+ *
+ * The arakoon_strerror procedure can be used to turn an arakoon_rc value into a
+ * human-readable message. For errno values, the strerror(3) function is called,
+ * so the caveats related to using this function apply to arakoon_strerror as
+ * well.
+ */
+
 #ifdef  __cplusplus
 # define ARAKOON_BEGIN_DECLS \
     extern "C" {
@@ -54,55 +102,40 @@
 
 ARAKOON_BEGIN_DECLS
 
-/* Conventions
- * ===========
- * Strings
- * -------
- * Everytime a char pointer is used, this is expected to be a standard,
- * null-terminated C-string. Whenever a non-null-terminated byte sequence is
- * used, a combination of a size_t value and a void pointer is used.
- *
- * Error handling
- * --------------
- * Several calls return an arakoon_rc value, which is typedef'ed to an int.
- * If the value equals 0, the call succeeded. If the value is negative, its
- * value is taken from errno, and as such denotes an E* value. If it's
- * positive, it's an Arakoon-specific error. See the ArakoonReturnCode.
- * enumeration for all possible values.
- *
- * You can use arakoon_strerror to turn a non-zero arakoon_rc value into
- * a more human-friendly string. It returns strerror(-rc) if rc is a
- * negative value.
- */
-
-/**
- * \brief Crakoon return codes
- *
- * The Crakoon API contains functions which return TODO
- */
+/* Return code values contained in arakoon_rc variables, if non-negative */
 typedef enum {
     /* These are returned from the server */
     ARAKOON_RC_SUCCESS = 0, /* Success */
-    ARAKOON_RC_NO_MAGIC = 1,
-    ARAKOON_RC_TOO_MANY_DEAD_NODES = 2,
-    ARAKOON_RC_NO_HELLO = 3,
+    ARAKOON_RC_NO_MAGIC = 1, /* No magic applied to given command */
+    ARAKOON_RC_TOO_MANY_DEAD_NODES = 2, /* Too many dead nodes */
+    ARAKOON_RC_NO_HELLO = 3, /* No hello received from client */
     ARAKOON_RC_NOT_MASTER = 4, /* Node is not the master */
     ARAKOON_RC_NOT_FOUND = 5, /* Not found */
-    ARAKOON_RC_WRONG_CLUSTER = 6,
-    ARAKOON_RC_UNKNOWN_FAILURE = 0xff,
+    ARAKOON_RC_WRONG_CLUSTER = 6, /* An invalid cluster name was specified */
+    ARAKOON_RC_UNKNOWN_FAILURE = 0xff, /* An unknown failure occurred */
 
     /* Internal client errors */
-    ARAKOON_RC_CLIENT_NETWORK_ERROR = 0x0100
+    ARAKOON_RC_CLIENT_NETWORK_ERROR = 0x0100 /* A client-side network error occurred */
 } ArakoonReturnCode;
 
 typedef int arakoon_rc;
 
+/* Check whether a given arakoon_rc value is an errno value */
 #define ARAKOON_RC_IS_ERRNO(n) (n < 0)
+/* Convert and cast an arakoon_rc value to the corresponding (positive!) errno value */
 #define ARAKOON_RC_AS_ERRNO(n) ((typeof(errno))(-n))
+/*Check whether a given arakoon_rc value denotes success */
 #define ARAKOON_RC_IS_SUCCESS(n) (n == 0)
+/* Check whether a given arakoon_rc value is an ArakoonReturnCode */
 #define ARAKOON_RC_IS_ARAKOONRETURNCODE (n >= 0)
+/* Convert and cast an arakoon_rc value into an ArakoonReturnCode */
 #define ARAKOON_RC_AS_ARAKOONRETURNCODE ((ArakoonReturnCode) n)
 
+/* Turn an arakoon_rc value into a human-readable string representation
+ *
+ * This uses strerror(3) internally when arakoon_rc is an errno value. The
+ * corresponding caveats apply.
+ */
 const char * arakoon_strerror(arakoon_rc n);
 
 /* Utility stuff */
@@ -110,22 +143,37 @@ typedef char arakoon_bool;
 #define ARAKOON_BOOL_TRUE (1)
 #define ARAKOON_BOOL_FALSE (0)
 
+/* Turn a generic byte sequence into a C-string
+ *
+ * This procedure turns a given data blob into a null-terminated C-string. The
+ * allocated string is returned. A call to realloc is used to achieve this, so
+ * the original data pointer will be invalid after callign this procedure.
+ *
+ * The caller is in charge of releasing the returned memory.
+ */
 char * arakoon_utils_make_string(void *data, size_t length)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
-/* Memory management */
+/* Memory handling */
+/* A vtable containing function pointers to be used for heap management */
 typedef struct {
-    void * (*malloc) (size_t size);
-    void (*free) (void *ptr);
-    void * (*realloc) (void *ptr, size_t size);
+    void * (*malloc) (size_t size); /* malloc(3) */
+    void (*free) (void *ptr); /* free(3) */
+    void * (*realloc) (void *ptr, size_t size); /* realloc(3) */
 } ArakoonMemoryHooks;
 
-/** \brief Register memory-management functions to be used by Crakoon
- */
+/* Register memory-management functions to be used by Crakoon */
 void arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks)
     ARAKOON_GNUC_NONNULL;
+/* Retrieve an ArakoonMemoryHooks table containing wrappers around the system
+ * malloc(3) and realloc(3) which abort() on allocation failure. Pass this to
+ * arakoon_memory_set_hooks in case you don't bother handling heap management
+ * failures (i.e. don't want to care about NULL checks or ENOMEM) and just die.
+ */
+const ArakoonMemoryHooks * arakoon_memory_get_abort_hooks(void);
 
 /* Logging */
+/* Enumeration of log levels */
 typedef enum {
     ARAKOON_LOG_TRACE,
     ARAKOON_LOG_DEBUG,
@@ -134,21 +182,31 @@ typedef enum {
     ARAKOON_LOG_FATAL
 } ArakoonLogLevel;
 
+/* Log handler callback prototype */
 typedef void (*ArakoonLogHandler) (ArakoonLogLevel level,
     const char * message);
 
-/** \brief Set a log message handler procedure
- */
+/* Set a log message handler procedure */
 void arakoon_log_set_handler(const ArakoonLogHandler handler);
 
 /* Value list
+ *
  * The list can be iterated and should be free'd when done (or whenever
- * seems fit). Concurrent iteration is not possible.
+ * seems fit).
  */
 typedef struct ArakoonValueList ArakoonValueList;
+/* Create a new ArakoonValueList
+ *
+ * The list should be released using arakoon_value_list_free when no longer
+ * needed.
+ */
 ArakoonValueList * arakoon_value_list_new(void)
     ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_MALLOC;
-/* TODO Do we want/need append? */
+/* Add a value to the list (at the tail) 
+ *
+ * The given value is copied and will be freed when arakoon_value_list_free is
+ * used.
+ */
 arakoon_rc arakoon_value_list_add(ArakoonValueList *list,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_NONNULL2(1, 3);
@@ -156,7 +214,8 @@ arakoon_rc arakoon_value_list_add(ArakoonValueList *list,
 size_t arakoon_value_list_size(const ArakoonValueList * const list)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
 /* Free a value list
- * Note any iters over the list will become invalid after this call
+ *
+ * Note: any iters over the list will become invalid after this call.
  */
 void arakoon_value_list_free(ArakoonValueList * const list);
 
@@ -166,9 +225,12 @@ ArakoonValueListIter * arakoon_value_list_create_iter(
     const ArakoonValueList * const list)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT
     ARAKOON_GNUC_MALLOC;
+/* Release an iter */
 void arakoon_value_list_iter_free(ArakoonValueListIter * const iter);
-/* Retrieve the next item. Returns NULL if the last item was reached
- * before. */
+/* Retrieve the next item
+ *
+ * value will point to NULL when the last item was reached.
+ */
 void arakoon_value_list_iter_next(ArakoonValueListIter * const iter,
     size_t * const value_size, const void ** const value)
     ARAKOON_GNUC_NONNULL;
@@ -176,6 +238,19 @@ void arakoon_value_list_iter_next(ArakoonValueListIter * const iter,
 void arakoon_value_list_iter_reset(ArakoonValueListIter * const iter)
     ARAKOON_GNUC_NONNULL;
 
+/* Helper to map over an ArakoonValueList
+ *
+ * Example usage:
+ *
+ * const void * v = NULL;
+ * size_t l = 0;
+ * ArakoonValueIter *iter = NULL;
+ *
+ * iter = get_iter();
+ * FOR_ARAKOON_VALUE_ITER(iter, &l, &v) {
+ *     do_something(l, v);
+ * }
+ */
 #define FOR_ARAKOON_VALUE_ITER(i, l, v)        \
     for(arakoon_value_list_iter_next(i, l, v); \
         *v != NULL;                             \
@@ -210,16 +285,38 @@ void arakoon_key_value_list_iter_reset(ArakoonKeyValueListIter * const iter)
 /* Sequence support */
 typedef struct ArakoonSequence ArakoonSequence;
 
+/* Allocate a new sequence
+ *
+ * The return value should be released using arakoon_sequence_free once no
+ * longer needed.
+ */
 ArakoonSequence * arakoon_sequence_new(void)
     ARAKOON_GNUC_MALLOC;
+/* Release an ArakoonSequence allocated using arakoon_sequence_new */
 void arakoon_sequence_free(ArakoonSequence *sequence);
+/* Add a 'set' action to the sequence
+ *
+ * Key and value will be copied and released on arakoon_sequence_free.
+ */
 arakoon_rc arakoon_sequence_add_set(ArakoonSequence *sequence,
     const size_t key_size, const void * const key,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_NONNULL3(1, 3, 5) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Add a 'delete' action to the sequence
+ *
+ * Key will be copied and released on arakoon_sequence_free.
+ */
 arakoon_rc arakoon_sequence_add_delete(ArakoonSequence *sequence,
     const size_t key_size, const void * const key)
     ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Add a 'test_and_set' action to the sequence
+ *
+ * Key, old_value and new_value will be copied and released on
+ * arakoon_sequence_free.
+ *
+ * 'old_value' and 'new_value' can be NULL to denote 'None', in which case the
+ * according size value should be 0 as well.
+ */
 arakoon_rc arakoon_sequence_add_test_and_set(ArakoonSequence *sequence,
     const size_t key_size, const void * const key,
     const size_t old_value_size, const void * const old_value,
@@ -230,81 +327,212 @@ arakoon_rc arakoon_sequence_add_test_and_set(ArakoonSequence *sequence,
 /* ArakoonCluster */
 typedef struct ArakoonCluster ArakoonCluster;
 
+/* Allocate a new ArakoonCluster, to be released using arakoon_cluster_free
+ *
+ * The given name will be copied and released in arakoon_cluster_free
+ */
 ArakoonCluster * arakoon_cluster_new(const char * const name)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_MALLOC
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Release an ArakoonCluster
+ *
+ * This will also close any open connections.
+ */
 void arakoon_cluster_free(ArakoonCluster *cluster);
+/* Retrieve the name of the cluster */
 const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
 
+/* Add a node to the cluster
+ *
+ * The name will be copied and released on arakoon_cluster_free.
+ * The given address struct should *not* be freed by the caller. It should
+ * remain valid as long as the ArakoonCluster exists. It *will* be released
+ * using freeaddrinfo(3) when arakoon_cluster_free is used. As such, a caller
+ * should not re-use the pointer after calling arakoon_cluster_add_node, nor
+ * pass it to any other functions (in general).
+ */
 arakoon_rc arakoon_cluster_add_node(ArakoonCluster *cluster,
     const char * const name, struct addrinfo * const address)
     ARAKOON_GNUC_NONNULL3(1, 2, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
-/* Helper around arakoon_cluster_add_node */
+/* Helper around arakoon_cluster_add_node
+ *
+ * This function is a helper arond arakoon_cluster_add_node to easily add
+ * TCP-based connections to server nodes. The function will not reference any
+ * of the given pointers after returning.
+ *
+ * It uses getaddrinfo(3) to look up socket connection information. Refer to the
+ * corresponding manual page to know the value of 'host' and 'service'.
+ */
 arakoon_rc arakoon_cluster_add_node_tcp(ArakoonCluster *cluster,
     const char * const name, const char * const host,
     const char * const service)
     ARAKOON_GNUC_NONNULL4(1, 2, 3, 4)
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
+/* Client call options
+ *
+ * This struct contains some settings (to be set using accessor procedures)
+ * which could be of use when performing a client call to a cluster.
+ *
+ * Not all options are applicable to all calls. Whenever NULL is passed to a
+ * client operation, default values (as set in any returned value of
+ * arakoon_client_call_options_new) will be used.
+ */
+typedef struct ArakoonClientCallOptions ArakoonClientCallOptions;
+
+#define ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_ALLOW_DIRTY (ARAKOON_BOOL_FALSE)
+
+ArakoonClientCallOptions * arakoon_client_call_options_new(void)
+    ARAKOON_GNUC_MALLOC ARAKOON_GNUC_WARN_UNUSED_RESULT;
+void arakoon_client_call_options_free(ArakoonClientCallOptions *options);
+
+arakoon_bool arakoon_client_call_options_get_allow_dirty(
+    const ArakoonClientCallOptions * const options)
+    ARAKOON_GNUC_NONNULL;
+void arakoon_client_call_options_set_allow_dirty(
+    ArakoonClientCallOptions * const options, arakoon_bool allow_dirty)
+    ARAKOON_GNUC_NONNULL;
+
+
 /* Client calls */
+/* Send a 'hello' call to the server, using 'client_id' and 'cluster_id'
+ *
+ * The message returned by the server is stored at 'result', which should be
+ * released by the caller when no longer required.
+ */
 arakoon_rc arakoon_hello(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
     const char * const client_id, const char * const cluster_id,
     char ** const result)
-    ARAKOON_GNUC_NONNULL4(1, 2, 3, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
-arakoon_rc arakoon_who_master(ArakoonCluster *cluster,
-    char ** master)
-    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
-arakoon_rc arakoon_expect_progress_possible(ArakoonCluster *cluster,
-    arakoon_bool *result)
-    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
-arakoon_rc arakoon_exists(ArakoonCluster *cluster, const size_t key_size,
-    const void * const key, arakoon_bool *result)
-    ARAKOON_GNUC_NONNULL3(1, 3, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
-arakoon_rc arakoon_get(ArakoonCluster *cluster, const size_t key_size,
-    const void * const key, size_t *result_size, void **result)
     ARAKOON_GNUC_NONNULL4(1, 3, 4, 5) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'who_master' call to the server
+ *
+ * The name of the master node as returned by the server will be stored at
+ * 'result', which should be released by the caller when no longer required.
+ */
+arakoon_rc arakoon_who_master(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options, char ** master)
+    ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send an 'expect_progress_possible' call to the server
+ *
+ * The result value will be stored at 'result' on success.
+ */
+arakoon_rc arakoon_expect_progress_possible(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options, arakoon_bool *result)
+    ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send an 'exists' call to the server
+ *
+ * The result value will be stored at 'result' on success.
+ */
+arakoon_rc arakoon_exists(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key, arakoon_bool *result)
+    ARAKOON_GNUC_NONNULL3(1, 4, 5) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'get' call to the server
+ *
+ * The resulting value will be stored at 'result', and its length at
+ * 'result_size'. 'result' should be released by the caller when no longer
+ * required.
+ */
+arakoon_rc arakoon_get(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key,
+    size_t *result_size, void **result)
+    ARAKOON_GNUC_NONNULL4(1, 4, 5, 6) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'multi_get' call to the server
+ *
+ * The result value list will be stored at 'result'. This ArakoonValueList
+ * should be released by the client using arakoon_value_list_free when no longer
+ * required.
+ */
 arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
     const ArakoonValueList * const keys, ArakoonValueList **result)
-    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
-arakoon_rc arakoon_set(ArakoonCluster *cluster, const size_t key_size,
-    const void * const key, const size_t value_size,
-    const void * const value) ARAKOON_GNUC_NONNULL3(1, 3, 5)
-    ARAKOON_GNUC_WARN_UNUSED_RESULT;
-arakoon_rc arakoon_delete(ArakoonCluster *cluster, const size_t key_size,
-    const void * const key) ARAKOON_GNUC_NONNULL2(1, 3)
-    ARAKOON_GNUC_WARN_UNUSED_RESULT;
+    ARAKOON_GNUC_NONNULL3(1, 3, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'set' call to the server */
+arakoon_rc arakoon_set(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key,
+    const size_t value_size, const void * const value)
+    ARAKOON_GNUC_NONNULL3(1, 4, 6) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'delete' call to the server */
+arakoon_rc arakoon_delete(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key)
+    ARAKOON_GNUC_NONNULL2(1, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'range' call to the server
+ *
+ * 'begin_key' and 'end_key' can be set to NULL to denote 'None'.
+ * 'begin_key_size' and 'end_key_size' should be set to 0 accordingly.
+ *
+ * If 'max_elements' is negative, all matches will be returned.
+ *
+ * The result will be stored at 'result', and should be released using
+ * arakoon_value_list_free by the caller when no longer required.
+ */
 arakoon_rc arakoon_range(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
     const size_t begin_key_size, const void * const begin_key,
     const arakoon_bool begin_key_included,
     const size_t end_key_size, const void * const end_key,
     const arakoon_bool end_key_included,
-    const ssize_t max_elements, /* TODO Use int ? */
-    ArakoonValueList **result) ARAKOON_GNUC_NONNULL2(1, 9)
+    const ssize_t max_elements,
+    ArakoonValueList **result) ARAKOON_GNUC_NONNULL2(1, 10)
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'range_entries' call to the server
+ *
+ * 'begin_key' and 'end_key' can be set to NULL to denote 'None'.
+ * 'begin_key_size' and 'end_key_size' should be set to 0 accordingly.
+ *
+ * If 'max_elements' is negative, all matches will be returned.
+ *
+ * The result will be stored at 'result', and should be released using
+ * arakoon_key_value_list_free by the caller when no longer required.
+ */
 arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
     const size_t begin_key_size, const void * const begin_key,
     const arakoon_bool begin_key_included,
     const size_t end_key_size, const void * const end_key,
     const arakoon_bool end_key_included,
-    const ssize_t max_elements, /* TODO Use int ? */
-    ArakoonKeyValueList **result) ARAKOON_GNUC_NONNULL2(1, 9)
+    const ssize_t max_elements,
+    ArakoonKeyValueList **result) ARAKOON_GNUC_NONNULL2(1, 10)
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'prefix' call to the server
+ *
+ * If 'max_elements' is negative, all matches will be returned.
+ *
+ * The result will be stored at 'result', and should be released using
+ * arakoon_value_list_free by the caller when no longer required.
+ */
 arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
     const size_t begin_key_size, const void * const begin_key,
     const ssize_t max_elements,
-    ArakoonValueList **result) ARAKOON_GNUC_NONNULL3(1, 3, 5)
+    ArakoonValueList **result) ARAKOON_GNUC_NONNULL3(1, 4, 6)
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
-/* Note: old_value can be NULL, new_value can be NULL */
+/* Send a 'test_and_set' call to the server
+ *
+ * 'old_value' and 'new_value' can be NULL to denote 'None', in which case the
+ * according size value should be 0 as well.
+ *
+ * The result will be stored at 'result', and should be released by the caller
+ * when no longer required. The result can be NULL, in which case the server
+ * returned 'None'.
+ */
 arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
     const size_t key_size, const void * const key,
     const size_t old_value_size, const void * const old_value,
     const size_t new_value_size, const void * const new_value,
     size_t *result_size, void **result)
-    ARAKOON_GNUC_NONNULL4(1, 3, 8, 9) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+    ARAKOON_GNUC_NONNULL4(1, 4, 9, 10) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'sequence' call to the server */
 arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
     const ArakoonSequence * const sequence)
-    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
+    ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 ARAKOON_END_DECLS
 
