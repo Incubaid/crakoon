@@ -342,7 +342,7 @@ void arakoon_log_set_handler(const ArakoonLogHandler handler) {
                 vsnprintf(buffer, 1024, format, args); \
                 buffer[1023] = 0;                      \
                                                        \
-                log_handler(l , buffer);               \
+                log_handler(l, buffer);               \
                                                        \
                 va_end(args);                          \
         }
@@ -439,21 +439,21 @@ char * arakoon_utils_make_string(void *data, size_t length) {
 }
 
 /* Value lists */
-typedef struct _ArakoonValueListItem ArakoonValueListItem;
-struct _ArakoonValueListItem {
+typedef struct ArakoonValueListItem ArakoonValueListItem;
+struct ArakoonValueListItem {
         ArakoonValueListItem *next;
 
         size_t value_size;
         void * value;
 };
 
-struct _ArakoonValueList {
+struct ArakoonValueList {
         size_t size;
         ArakoonValueListItem *first;
         ArakoonValueListItem *last;
 };
 
-struct _ArakoonValueListIter {
+struct ArakoonValueListIter {
         const ArakoonValueList *list;
         ArakoonValueListItem *current;
 };
@@ -619,8 +619,8 @@ void arakoon_value_list_iter_reset(ArakoonValueListIter * const iter) {
 }
 
 /* Key-value list */
-typedef struct _ArakoonKeyValueListItem ArakoonKeyValueListItem;
-struct _ArakoonKeyValueListItem {
+typedef struct ArakoonKeyValueListItem ArakoonKeyValueListItem;
+struct ArakoonKeyValueListItem {
         ArakoonKeyValueListItem *next;
 
         size_t key_size;
@@ -629,12 +629,12 @@ struct _ArakoonKeyValueListItem {
         void * value;
 };
 
-struct _ArakoonKeyValueList {
+struct ArakoonKeyValueList {
         size_t size;
         ArakoonKeyValueListItem *first;
 };
 
-struct _ArakoonKeyValueListIter {
+struct ArakoonKeyValueListIter {
         const ArakoonKeyValueList *list;
         ArakoonKeyValueListItem *current;
 };
@@ -785,8 +785,8 @@ void arakoon_key_value_list_iter_reset(ArakoonKeyValueListIter * const iter) {
 }
 
 /* Sequences */
-typedef struct _ArakoonSequenceItem ArakoonSequenceItem;
-struct _ArakoonSequenceItem {
+typedef struct ArakoonSequenceItem ArakoonSequenceItem;
+struct ArakoonSequenceItem {
         enum {
                 ARAKOON_SEQUENCE_ITEM_TYPE_SET,
                 ARAKOON_SEQUENCE_ITEM_TYPE_DELETE,
@@ -844,7 +844,7 @@ static void arakoon_sequence_item_free(ArakoonSequenceItem *item) {
         arakoon_mem_free(item);
 }
 
-struct _ArakoonSequence {
+struct ArakoonSequence {
         ArakoonSequenceItem *item;
 };
 
@@ -970,9 +970,9 @@ arakoon_rc arakoon_sequence_add_test_and_set(ArakoonSequence *sequence,
 
 /* Cluster */
 
-typedef struct _ArakoonClusterNode ArakoonClusterNode;
+typedef struct ArakoonClusterNode ArakoonClusterNode;
 
-struct _ArakoonClusterNode {
+struct ArakoonClusterNode {
         char * name;
         const ArakoonCluster * cluster;
         struct addrinfo * address;
@@ -981,7 +981,7 @@ struct _ArakoonClusterNode {
         ArakoonClusterNode * next;
 };
 
-struct _ArakoonCluster {
+struct ArakoonCluster {
         char * name;
 
         ArakoonClusterNode * nodes;

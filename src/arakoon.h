@@ -145,7 +145,7 @@ void arakoon_log_set_handler(const ArakoonLogHandler handler);
  * The list can be iterated and should be free'd when done (or whenever
  * seems fit). Concurrent iteration is not possible.
  */
-typedef struct _ArakoonValueList ArakoonValueList;
+typedef struct ArakoonValueList ArakoonValueList;
 ArakoonValueList * arakoon_value_list_new(void)
     ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_MALLOC;
 /* TODO Do we want/need append? */
@@ -160,7 +160,7 @@ size_t arakoon_value_list_size(const ArakoonValueList * const list)
  */
 void arakoon_value_list_free(ArakoonValueList * const list);
 
-typedef struct _ArakoonValueListIter ArakoonValueListIter;
+typedef struct ArakoonValueListIter ArakoonValueListIter;
 /* Create an iter for the given value list */
 ArakoonValueListIter * arakoon_value_list_create_iter(
     const ArakoonValueList * const list)
@@ -184,12 +184,12 @@ void arakoon_value_list_iter_reset(ArakoonValueListIter * const iter)
 /* Key Value list
  * Same as ValueList, but with pairs of values, sort-of
  */
-typedef struct _ArakoonKeyValueList ArakoonKeyValueList;
+typedef struct ArakoonKeyValueList ArakoonKeyValueList;
 size_t arakoon_key_value_list_size(const ArakoonKeyValueList * const list)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
 void arakoon_key_value_list_free(ArakoonKeyValueList * const list);
 
-typedef struct _ArakoonKeyValueListIter ArakoonKeyValueListIter;
+typedef struct ArakoonKeyValueListIter ArakoonKeyValueListIter;
 ArakoonKeyValueListIter * arakoon_key_value_list_create_iter(
     const ArakoonKeyValueList * const list)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT
@@ -208,7 +208,7 @@ void arakoon_key_value_list_iter_reset(ArakoonKeyValueListIter * const iter)
         arakoon_key_value_list_iter_next(i, kl, k, vl, v))
 
 /* Sequence support */
-typedef struct _ArakoonSequence ArakoonSequence;
+typedef struct ArakoonSequence ArakoonSequence;
 
 ArakoonSequence * arakoon_sequence_new(void)
     ARAKOON_GNUC_MALLOC;
@@ -228,7 +228,7 @@ arakoon_rc arakoon_sequence_add_test_and_set(ArakoonSequence *sequence,
 
 
 /* ArakoonCluster */
-typedef struct _ArakoonCluster ArakoonCluster;
+typedef struct ArakoonCluster ArakoonCluster;
 
 ArakoonCluster * arakoon_cluster_new(const char * const name)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_MALLOC
