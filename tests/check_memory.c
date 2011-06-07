@@ -1,5 +1,6 @@
 #include <check.h>
 
+#include "arakoon.h"
 #include "memory.h"
 
 START_TEST(test_memory_malloc) {
@@ -83,7 +84,7 @@ static Suite * memory_suite() {
         return s;
 }
 
-int main(int argc, char **argv) {
+int main(int argc ARAKOON_GNUC_UNUSED, char **argv ARAKOON_GNUC_UNUSED) {
         int failures = 0;
         Suite *s = NULL;
         SRunner *r = NULL;

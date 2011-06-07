@@ -418,6 +418,9 @@ void arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks) {
 }
 
 /* Utils */
+/**
+ * \brief Turn a bunch of bytes into a proper C-string
+ */
 char * arakoon_utils_make_string(void *data, size_t length) {
         char *s = NULL;
 
@@ -776,6 +779,31 @@ struct _ArakoonSequenceItem {
         ArakoonSequenceItem * next;
 };
 
+static void arakoon_sequence_item_free(ArakoonSequenceItem *item) {
+        RETURN_IF_NULL(item);
+
+        switch(item->type) {
+                case ARAKOON_SEQUENCE_ITEM_TYPE_SET: {
+                        arakoon_mem_free(item->data.set.key);
+                        arakoon_mem_free(item->data.set.value);
+                }; break;
+                case ARAKOON_SEQUENCE_ITEM_TYPE_DELETE: {
+                        arakoon_mem_free(item->data.delete.key);
+                }; break;
+                case ARAKOON_SEQUENCE_ITEM_TYPE_TEST_AND_SET: {
+                        arakoon_mem_free(item->data.test_and_set.key);
+                        arakoon_mem_free(item->data.test_and_set.old_value);
+                        arakoon_mem_free(item->data.test_and_set.new_value);
+                }; break;
+                default: {
+                        log_fatal("Unknown sequence item type");
+                        abort();
+                }; break;
+        }
+
+        arakoon_mem_free(item);
+}
+
 struct _ArakoonSequence {
         ArakoonSequenceItem *item;
 };
@@ -791,6 +819,25 @@ ArakoonSequence * arakoon_sequence_new(void) {
         sequence->item = NULL;
 
         return sequence;
+}
+
+void arakoon_sequence_free(ArakoonSequence *sequence) {
+        ArakoonSequenceItem *item = NULL, *next = NULL;
+
+        FUNCTION_ENTER(arakoon_sequence_free);
+
+        RETURN_IF_NULL(sequence);
+
+        next = sequence->item;
+
+        while(next != NULL) {
+                item = next;
+                next = item->next;
+
+                arakoon_sequence_item_free(item);
+        }
+
+        arakoon_mem_free(sequence);
 }
 
 #define PRELUDE(n)                        \
@@ -1066,6 +1113,7 @@ void arakoon_cluster_free(ArakoonCluster *cluster) {
         node = cluster->nodes;
         while(node != NULL) {
                 next_node = node->next;
+                arakoon_cluster_node_disconnect(node);
                 arakoon_cluster_node_free(node);
                 node = next_node;
         }
@@ -1429,6 +1477,7 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
         *result = NULL;
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN
+                + ARAKOON_PROTOCOL_BOOL_LEN
                 + ARAKOON_PROTOCOL_UINT32_LEN;
 
         command = arakoon_mem_new(len, char);
@@ -1437,6 +1486,7 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
         c = command;
 
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x11, 0x00);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c, ARAKOON_BOOL_FALSE);
         ARAKOON_PROTOCOL_WRITE_UINT32(c, arakoon_value_list_size(keys));
 
         ASSERT_ALL_WRITTEN(command, c, len);
@@ -1455,6 +1505,7 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
         RETURN_IF_NOT_SUCCESS(rc);
 
         for(item = keys->first; item != NULL; item = item->next) {
+                /* TODO Multi syscall vs memory copies... */
                 *((uint32_t *)l) = item->value_size;
                 WRITE_BYTES(cluster->nodes->fd, l, ARAKOON_PROTOCOL_UINT32_LEN, rc);
                 RETURN_IF_NOT_SUCCESS(rc);
@@ -1763,5 +1814,153 @@ arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
 
 arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
     const ArakoonSequence * const sequence) {
-        abort();
+        size_t len = 0, i = 0;
+        uint32_t count = 0;
+        ArakoonSequenceItem *item = NULL;
+        char *command = NULL;
+        arakoon_rc rc = 0;
+
+#define I(n) (len += n)
+
+        I(ARAKOON_PROTOCOL_COMMAND_LEN); /* Command */
+        I(ARAKOON_PROTOCOL_UINT32_LEN); /* Total string size */
+        I(ARAKOON_PROTOCOL_UINT32_LEN); /* Outer sequence */
+        I(ARAKOON_PROTOCOL_UINT32_LEN); /* Number of sequence items */
+
+        for(item = sequence->item; item != NULL; item = item->next) {
+                I(ARAKOON_PROTOCOL_UINT32_LEN); /* Command type */
+
+                switch(item->type) {
+                        case ARAKOON_SEQUENCE_ITEM_TYPE_SET: {
+                                I(ARAKOON_PROTOCOL_STRING_LEN(item->data.set.key_size));
+                                I(ARAKOON_PROTOCOL_STRING_LEN(item->data.set.value_size));
+                        }; break;
+                        case ARAKOON_SEQUENCE_ITEM_TYPE_DELETE: {
+                                I(ARAKOON_PROTOCOL_STRING_LEN(item->data.delete.key_size));
+                        }; break;
+                        case ARAKOON_SEQUENCE_ITEM_TYPE_TEST_AND_SET: {
+                                I(ARAKOON_PROTOCOL_STRING_LEN(item->data.test_and_set.key_size));
+                                I(ARAKOON_PROTOCOL_STRING_OPTION_LEN(item->data.test_and_set.old_value,
+                                        item->data.test_and_set.old_value_size));
+                                I(ARAKOON_PROTOCOL_STRING_OPTION_LEN(item->data.test_and_set.new_value,
+                                        item->data.test_and_set.new_value_size));
+                        }; break;
+                        default: {
+                                log_fatal("Invalid sequence type");
+                                abort();
+                        }; break;
+                }
+        }
+
+#undef I
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        i = len;
+
+        /* NOTE This code builds the command back-to-front! */
+#define WRITE_UINT32(n)                   \
+        STMT_START                        \
+        i -= ARAKOON_PROTOCOL_UINT32_LEN; \
+        *((uint32_t *)&command[i]) = n;   \
+        STMT_END
+
+#define WRITE_STRING(s, l)         \
+        STMT_START                 \
+        i -= l;                    \
+        memcpy(&command[i], s, l); \
+        WRITE_UINT32(l);           \
+        STMT_END
+
+#define WRITE_STRING_OPTION(s, l)                                            \
+        STMT_START                                                           \
+        if(s == NULL) {                                                      \
+                if(l != 0) {                                                 \
+                        log_error("String is NULL, but length is non-zero"); \
+                }                                                            \
+                i -= ARAKOON_PROTOCOL_BOOL_LEN;                              \
+                command[i] = ARAKOON_BOOL_FALSE;                             \
+        }                                                                    \
+        else {                                                               \
+                WRITE_STRING(s, l);                                          \
+                i -= ARAKOON_PROTOCOL_BOOL_LEN;                              \
+                command[i] = ARAKOON_BOOL_TRUE;                              \
+        }                                                                    \
+        STMT_END
+
+        for(item = sequence->item; item != NULL; item = item->next) {
+                count++;
+
+                switch(item->type) {
+                        case ARAKOON_SEQUENCE_ITEM_TYPE_SET: {
+                                WRITE_STRING(item->data.set.value,
+                                        item->data.set.value_size);
+                                WRITE_STRING(item->data.set.key,
+                                        item->data.set.key_size);
+                                WRITE_UINT32(1);
+                        }; break;
+                        case ARAKOON_SEQUENCE_ITEM_TYPE_DELETE: {
+                                WRITE_STRING(item->data.delete.key,
+                                        item->data.delete.key_size);
+                                WRITE_UINT32(2);
+                        }; break;
+                        case ARAKOON_SEQUENCE_ITEM_TYPE_TEST_AND_SET: {
+                                WRITE_STRING_OPTION(item->data.test_and_set.new_value,
+                                        item->data.test_and_set.new_value_size);
+                                WRITE_STRING_OPTION(item->data.test_and_set.old_value,
+                                        item->data.test_and_set.old_value_size);
+                                WRITE_STRING(item->data.test_and_set.key,
+                                        item->data.test_and_set.key_size);
+                                WRITE_UINT32(3);
+                        }; break;
+                        default: {
+                                log_fatal("Invalid sequence type");
+                                abort();
+                        }; break;
+                }
+        }
+
+        if(i != ARAKOON_PROTOCOL_COMMAND_LEN /* Command */
+                        + ARAKOON_PROTOCOL_UINT32_LEN /* String length */
+                        + ARAKOON_PROTOCOL_UINT32_LEN /* Outer sequence */
+                        + ARAKOON_PROTOCOL_UINT32_LEN /* Item count */
+          ) {
+                log_fatal("Incorrect count in sequence construction");
+                abort();
+        }
+
+        WRITE_UINT32(count);
+        WRITE_UINT32(5);
+        WRITE_UINT32(len - ARAKOON_PROTOCOL_UINT32_LEN - ARAKOON_PROTOCOL_COMMAND_LEN);
+
+#undef WRITE_UINT32
+#undef WRITE_STRING
+#undef WRITE_STRING_OPTION
+
+        if(i != ARAKOON_PROTOCOL_COMMAND_LEN) {
+                log_fatal("Incorrect count in sequence construction");
+                abort();
+        }
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(command, 0x10, 0x00);
+        /* Macro changes our pointer... */
+        command -= ARAKOON_PROTOCOL_COMMAND_LEN;
+
+        if(cluster->nodes->fd < 0) {
+                rc = arakoon_cluster_node_connect(cluster->nodes);
+                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                        arakoon_mem_free(command);
+                }
+
+                RETURN_IF_NOT_SUCCESS(rc);
+        }
+
+        WRITE_BYTES(cluster->nodes->fd, command, len, rc);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(cluster->nodes->fd, rc);
+
+        return rc;
 }

@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "memory.h"
+
 #define SENTINEL1 (0xdeadbeef)
 #define SENTINEL2 (0xcafebabe)
 
@@ -116,7 +118,8 @@ void * check_arakoon_realloc(void *ptr, size_t s) {
         return USER_ADDRESS(ret);
 }
 
-void * check_arakoon_realloc_null(void *ptr, size_t s) {
+void * check_arakoon_realloc_null(void *ptr ARAKOON_GNUC_UNUSED,
+    size_t s ARAKOON_GNUC_UNUSED) {
         return NULL;
 }
 

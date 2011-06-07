@@ -28,7 +28,8 @@ m4_define([crakoon_version],
 
 # Libtool stuff
 m4_define([crakoon_lt_release], [crakoon_major_version.crakoon_minor_version])
-m4_define([crakoon_lt_current], [m4_eval(100 * crakoon_minor_version + crakoon_micro_version - crakoon_interface_age)])
+m4_define([crakoon_lt_current],
+          [m4_eval(100 * crakoon_minor_version + crakoon_micro_version - crakoon_interface_age)])
 m4_define([crakoon_lt_revision], [crakoon_interface_age])
 m4_define([crakoon_lt_age],
           [m4_eval(crakoon_binary_age - crakoon_interface_age)])
@@ -102,7 +103,7 @@ LT_INIT
 
 PKG_CHECK_MODULES([CHECK], [check >= 0.9.4])
 
-LIBTOOL_EXPORT_OPTIONS='-export-symbols-regex "^arakoon.*"'
+LIBTOOL_EXPORT_OPTIONS='-export-symbols-regex "^arakoon_.*"'
 AC_SUBST(LIBTOOL_EXPORT_OPTIONS)
 
 AC_ARG_ENABLE(debug,
@@ -133,6 +134,19 @@ if test "x$GCC" = "xyes"; then
   *[[\ \	]]-Wall[[\ \	]]*) ;;
   *) CFLAGS="$CFLAGS -Wall" ;;
   esac
+  case " $CFLAGS " in
+  *[[\ \	]]-Wextra[[\ \	]]*) ;;
+  *) CFLAGS="$CFLAGS -Wextra" ;;
+  esac
+  case " $CFLAGS " in
+  *[[\ \	]]-Werror[[\ \	]]*) ;;
+  *) CFLAGS="$CFLAGS -Werror" ;;
+  esac
+  case " $CFLAGS " in
+  *[[\ \	]]-Wswitch-enum[[\ \	]]*) ;;
+  *) CFLAGS="$CFLAGS -Wswitch-enum" ;;
+  esac
+
 fi
 
 AC_C_CONST

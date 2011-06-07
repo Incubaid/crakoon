@@ -21,13 +21,14 @@
 int main(int argc, char **argv) {
         ArakoonCluster *c = NULL;
         arakoon_rc rc = 0;
-        ArakoonValueList *r0 = NULL;
+        ArakoonValueList *r0 = NULL, *r2 = NULL;
         ArakoonValueListIter *iter0 = NULL;
         ArakoonKeyValueList *r1 = NULL;
         ArakoonKeyValueListIter *iter1 = NULL;
         size_t l0 = 0, l1 = 0;
         const void *v0 = NULL, *v1 = NULL;
         char *s0 = NULL, *s1 = NULL;
+        ArakoonSequence *seq = NULL;
 
         ArakoonMemoryHooks hooks = {
                 check_arakoon_malloc,
@@ -48,7 +49,30 @@ int main(int argc, char **argv) {
         rc = arakoon_cluster_add_node_tcp(c, argv[2], argv[3], argv[4]);
         ABORT_IF_NOT_SUCCESS(rc);
 
-        rc = arakoon_prefix(c, 1, "g", -1, &r0);
+        r0 = arakoon_value_list_new();
+        rc = arakoon_value_list_prepend(r0, 3, "foo");
+        ABORT_IF_NOT_SUCCESS(rc);
+        rc = arakoon_value_list_prepend(r0, 4, "foo2");
+        ABORT_IF_NOT_SUCCESS(rc);
+        rc = arakoon_multi_get(c, r0, &r2);
+        ABORT_IF_NOT_SUCCESS(rc);
+        arakoon_value_list_free(r0);
+        iter0 = arakoon_value_list_create_iter(r2);
+        ABORT_IF_NULL(iter0);
+
+        FOR_ARAKOON_VALUE_ITER(iter0, &l0, &v0) {
+                s0 = check_arakoon_malloc((l0 + 1) * sizeof(char));
+                ABORT_IF_NULL(s0);
+                memcpy(s0, v0, l0);
+                s0[l0] = 0;
+                printf("Multi-get value: %s\n", s0);
+                check_arakoon_free(s0);
+        }
+
+        arakoon_value_list_iter_free(iter0);
+        arakoon_value_list_free(r2);
+
+        rc = arakoon_prefix(c, 1, "f", -1, &r0);
         ABORT_IF_NOT_SUCCESS(rc);
 
         iter0 = arakoon_value_list_create_iter(r0);
@@ -65,6 +89,43 @@ int main(int argc, char **argv) {
 
         arakoon_value_list_iter_free(iter0);
         arakoon_value_list_free(r0);
+
+        rc = arakoon_range_entries(c, 0, NULL, ARAKOON_BOOL_TRUE,
+                0, NULL, ARAKOON_BOOL_TRUE, -1, &r1);
+        ABORT_IF_NOT_SUCCESS(rc);
+
+        iter1 = arakoon_key_value_list_create_iter(r1);
+        ABORT_IF_NULL(iter1);
+
+        FOR_ARAKOON_KEY_VALUE_ITER(iter1, &l0, &v0, &l1, &v1) {
+                s0 = check_arakoon_malloc((l0 + 1) * sizeof(char));
+                ABORT_IF_NULL(s0);
+                s1 = check_arakoon_malloc((l1 + 1) * sizeof(char));
+                ABORT_IF_NULL(s1);
+                memcpy(s0, v0, l0);
+                s0[l0] = 0;
+                memcpy(s1, v1, l1);
+                s1[l1] = 0;
+                printf("Key: %s, value: %s\n", s0, s1);
+                check_arakoon_free(s0);
+                check_arakoon_free(s1);
+        }
+
+        arakoon_key_value_list_iter_free(iter1);
+        arakoon_key_value_list_free(r1);
+
+        seq = arakoon_sequence_new();
+        rc = arakoon_sequence_add_set(seq, 3, "foo", 3, "baz");
+        ABORT_IF_NOT_SUCCESS(rc);
+        rc = arakoon_sequence_add_set(seq, 3, "foz", 3, "bat");
+        ABORT_IF_NOT_SUCCESS(rc);
+        rc = arakoon_sequence_add_test_and_set(seq, 3, "foz", 3, "bat", 3, "baz");
+        ABORT_IF_NOT_SUCCESS(rc);
+        rc = arakoon_sequence_add_delete(seq, 3, "foz");
+        ABORT_IF_NOT_SUCCESS(rc);
+        rc = arakoon_sequence(c, seq);
+        ABORT_IF_NOT_SUCCESS(rc);
+        arakoon_sequence_free(seq);
 
         arakoon_cluster_free(c);
 

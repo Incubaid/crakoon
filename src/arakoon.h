@@ -24,6 +24,12 @@
 # define ARAKOON_GNUC_WARN_UNUSED_RESULT
 #endif
 
+#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4)
+# define ARAKOON_GNUC_UNUSED __attribute__ ((__unused__))
+#else
+# define ARAKOON_GNUC_UNUSED
+#endif
+
 #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 96)
 # define ARAKOON_GNUC_MALLOC __attribute__((__malloc__))
 # define ARAKOON_GNUC_PURE __attribute__((__pure__))
@@ -69,6 +75,11 @@ ARAKOON_BEGIN_DECLS
  * negative value.
  */
 
+/**
+ * \brief Crakoon return codes
+ *
+ * The Crakoon API contains functions which return TODO
+ */
 typedef enum {
     /* These are returned from the server */
     ARAKOON_RC_SUCCESS = 0, /* Success */
@@ -109,6 +120,8 @@ typedef struct {
     void * (*realloc) (void *ptr, size_t size);
 } ArakoonMemoryHooks;
 
+/** \brief Register memory-management functions to be used by Crakoon
+ */
 void arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks)
     ARAKOON_GNUC_NONNULL;
 
@@ -124,6 +137,8 @@ typedef enum {
 typedef void (*ArakoonLogHandler) (ArakoonLogLevel level,
     const char * message);
 
+/** \brief Set a log message handler procedure
+ */
 void arakoon_log_set_handler(const ArakoonLogHandler handler);
 
 /* Value list
@@ -133,6 +148,7 @@ void arakoon_log_set_handler(const ArakoonLogHandler handler);
 typedef struct _ArakoonValueList ArakoonValueList;
 ArakoonValueList * arakoon_value_list_new(void)
     ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_MALLOC;
+/* TODO Do we want/need append? */
 arakoon_rc arakoon_value_list_prepend(ArakoonValueList *list,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_NONNULL2(1, 3);
@@ -289,13 +305,6 @@ arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
 arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
     const ArakoonSequence * const sequence)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
-
-/* TODO Currently not implemented
-arakoon_rc arakoon_assert(...);
-arakoon_rc arakoon_statistics(ArakoonCluster *cluster,
-    ArakoonStatistics **result)
-    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
-*/
 
 ARAKOON_END_DECLS
 

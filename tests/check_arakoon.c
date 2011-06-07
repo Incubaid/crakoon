@@ -8,70 +8,6 @@
 
 #define SENTINEL (0xdeadbeef)
 
-/*static void * verbose_malloc(size_t s) {
-        void *ret = NULL;
-        size_t len = 0;
-
-        fprintf(stderr, "[MEM] malloc(%lu)\n", s);
-        len = s + sizeof(size_t) + (2 * sizeof(uint32_t));
-        ret = malloc(len);
-
-        if(ret == NULL) {
-                fprintf(stderr, "[MEM] malloc returned NULL\n");
-                abort();
-        }
-
-        *((size_t *)ret) = s;
-        *((uint32_t *)((char *)ret + sizeof(size_t))) = SENTINEL;
-        *((uint32_t *)((char *)ret + len - sizeof(uint32_t))) = SENTINEL;
-
-        return ((char *)ret + sizeof(size_t) + sizeof(uint32_t));
-}
-
-static void verbose_free(void *ptr) {
-        size_t s = 0;
-        uint32_t s0 = 0, s1 = 0;
-
-        ptr = (char *)ptr - sizeof(size_t) - sizeof(uint32_t);
-
-        s = *(size_t *)ptr;
-
-        fprintf(stderr, "[MEM] free(%lu)\n", s);
-
-        s0 = *((uint32_t *)((char *)ptr + sizeof(size_t)));
-        s1 = *((uint32_t *)((char *)ptr + sizeof(size_t) + sizeof(uint32_t) + s));
-
-        if(s0 != SENTINEL) {
-                abort();
-        }
-        if(s1 != SENTINEL) {
-                abort();
-        }
-
-        free(ptr);
-}
-
-static void * verbose_realloc(void *ptr, size_t s) {
-        size_t s0 = 0;
-        void *ret = NULL;
-
-        ptr = (char *)ptr - sizeof(size_t) - sizeof(uint32_t);
-        s0 = *(size_t *)ptr;
-
-        fprintf(stderr, "[MEM] realloc(%lu, %lu)\n", s0, s);
-
-        ret = realloc(ptr, s + sizeof(size_t) + (2 * sizeof(uint32_t)));
-        if(ret == NULL) {
-                fprintf(stderr, "[MEM] realloc returned NULL\n");
-                abort();
-        }
-
-        *((size_t *)ret) = s;
-        *((uint32_t *)((char *)ret + sizeof(size_t) + sizeof(uint32_t) + s)) = SENTINEL;
-
-        return ((char *)ret + sizeof(size_t) + sizeof(uint32_t));
-}*/
-
 #define S "abcdef"
 #define L (strlen(S))
 
@@ -172,7 +108,7 @@ static Suite * arakoon_suite() {
         return s;
 }
 
-int main(int argc, char **argv) {
+int main(int argc ARAKOON_GNUC_UNUSED, char **argv ARAKOON_GNUC_UNUSED) {
         int failures = 0;
         Suite *s = NULL;
         SRunner *r = NULL;
