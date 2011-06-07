@@ -450,6 +450,7 @@ struct _ArakoonValueListItem {
 struct _ArakoonValueList {
         size_t size;
         ArakoonValueListItem *first;
+        ArakoonValueListItem *last;
 };
 
 struct _ArakoonValueListIter {
@@ -465,11 +466,12 @@ ArakoonValueList * arakoon_value_list_new(void) {
 
         list->size = 0;
         list->first = NULL;
+        list->last = NULL;
 
         return list;
 }
 
-arakoon_rc arakoon_value_list_prepend(ArakoonValueList *list,
+static arakoon_rc arakoon_value_list_prepend(ArakoonValueList *list,
     const size_t value_size, const void * const value) {
         ArakoonValueListItem *item = NULL;
 
@@ -489,9 +491,47 @@ arakoon_rc arakoon_value_list_prepend(ArakoonValueList *list,
         list->first = item;
         list->size = list->size + 1;
 
+        if(list->last == NULL) {
+                list->last = item;
+        }
+
         return ARAKOON_RC_SUCCESS;
 }
 
+static arakoon_rc arakoon_value_list_append(ArakoonValueList *list,
+    const size_t value_size, const void * const value) {
+        ArakoonValueListItem *item = NULL;
+
+        item = arakoon_mem_new(1, ArakoonValueListItem);
+        RETURN_ENOMEM_IF_NULL(item);
+
+        item->value = arakoon_mem_malloc(value_size);
+        if(item->value == NULL) {
+                arakoon_mem_free(item);
+                return -ENOMEM;
+        }
+
+        item->next = NULL;
+        item->value_size = value_size;
+        memcpy(item->value, value, value_size);
+
+        if(list->last != NULL) {
+                list->last->next = item;
+        }
+        list->last = item;
+        if(list->first == NULL) {
+                list->first = item;
+        }
+
+        list->size = list->size + 1;
+
+        return ARAKOON_RC_SUCCESS;
+}
+
+arakoon_rc arakoon_value_list_add(ArakoonValueList *list,
+    const size_t value_size, const void * const value) {
+        return arakoon_value_list_append(list, value_size, value);
+}
 
 size_t arakoon_value_list_size(const ArakoonValueList * const list) {
         FUNCTION_ENTER(arakoon_value_list_size);
@@ -1173,7 +1213,7 @@ arakoon_rc arakoon_cluster_add_node_tcp(ArakoonCluster *cluster,
 /* Client operations */
 #define ASSERT_ALL_WRITTEN(command, c, len)                              \
         STMT_START                                                       \
-        if(c != (char *)command + len) {                                 \
+        if(c != command + len) {                                 \
                 log_fatal("Unexpected number of characters in command"); \
                 abort();                                                 \
         }                                                                \
@@ -1819,6 +1859,8 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
         ArakoonSequenceItem *item = NULL;
         char *command = NULL;
         arakoon_rc rc = 0;
+
+        FUNCTION_ENTER(arakoon_sequence);
 
 #define I(n) (len += n)
 

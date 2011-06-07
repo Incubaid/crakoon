@@ -149,7 +149,7 @@ typedef struct _ArakoonValueList ArakoonValueList;
 ArakoonValueList * arakoon_value_list_new(void)
     ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_MALLOC;
 /* TODO Do we want/need append? */
-arakoon_rc arakoon_value_list_prepend(ArakoonValueList *list,
+arakoon_rc arakoon_value_list_add(ArakoonValueList *list,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_NONNULL2(1, 3);
 /* Retrieve the number of items in the list */

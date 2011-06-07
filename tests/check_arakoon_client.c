@@ -50,9 +50,9 @@ int main(int argc, char **argv) {
         ABORT_IF_NOT_SUCCESS(rc);
 
         r0 = arakoon_value_list_new();
-        rc = arakoon_value_list_prepend(r0, 3, "foo");
+        rc = arakoon_value_list_add(r0, 3, "foo");
         ABORT_IF_NOT_SUCCESS(rc);
-        rc = arakoon_value_list_prepend(r0, 4, "foo2");
+        rc = arakoon_value_list_add(r0, 4, "foo2");
         ABORT_IF_NOT_SUCCESS(rc);
         rc = arakoon_multi_get(c, r0, &r2);
         ABORT_IF_NOT_SUCCESS(rc);
