@@ -383,13 +383,28 @@ typedef struct ArakoonClientCallOptions ArakoonClientCallOptions;
 
 #define ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_ALLOW_DIRTY (ARAKOON_BOOL_FALSE)
 
+/* Allocate a new ArakoonClientCallOptions structure
+ *
+ * The returned value should be released using arakoon_client_call_options_free
+ * when no longer required.
+ *
+ * The returned structure will be pre-initialized using settings according to
+ * the ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_* definitions.
+ */
 ArakoonClientCallOptions * arakoon_client_call_options_new(void)
     ARAKOON_GNUC_MALLOC ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Release an ArakoonClientCallOptions structure allocated using
+ * arakoon_client_call_options_new
+ */
 void arakoon_client_call_options_free(ArakoonClientCallOptions *options);
 
+/* Get the current 'allow_dirty' setting from an ArakoonClientCallOptions
+ * structure
+ */
 arakoon_bool arakoon_client_call_options_get_allow_dirty(
     const ArakoonClientCallOptions * const options)
     ARAKOON_GNUC_NONNULL;
+/* Set the 'allow_dirty' flag in an ArakoonClientCallOptions structure */
 void arakoon_client_call_options_set_allow_dirty(
     ArakoonClientCallOptions * const options, arakoon_bool allow_dirty)
     ARAKOON_GNUC_NONNULL;
