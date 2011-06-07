@@ -450,6 +450,8 @@ const ArakoonMemoryHooks * arakoon_memory_get_abort_hooks(void) {
                 arakoon_memory_abort_realloc
         };
 
+        FUNCTION_ENTER(arakoon_memory_get_abort_hooks);
+
         return &hooks;
 }
 
@@ -563,11 +565,14 @@ static arakoon_rc arakoon_value_list_append(ArakoonValueList *list,
 
 arakoon_rc arakoon_value_list_add(ArakoonValueList *list,
     const size_t value_size, const void * const value) {
+        FUNCTION_ENTER(arakoon_value_list_add);
+
         return arakoon_value_list_append(list, value_size, value);
 }
 
 size_t arakoon_value_list_size(const ArakoonValueList * const list) {
         FUNCTION_ENTER(arakoon_value_list_size);
+
         return list->size;
 }
 
