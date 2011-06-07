@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
         };
 
         if(argc < 5) {
-                fprintf(stderr, "Usage: %s name host port\n", argv[0]);
+                fprintf(stderr, "Usage: %s cluster name host port\n", argv[0]);
                 return 1;
         }
 
