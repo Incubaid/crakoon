@@ -11,6 +11,6 @@ check_memory_SOURCES = check_memory.c memory.c $(top_srcdir)/src/arakoon.h
 check_memory_CFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src
 check_memory_LDADD = @CHECK_LIBS@
 
-test_arakoon_client_SOURCES = check_arakoon_client.c memory.c $(top_srcdir)/src/arakoon.h
+test_arakoon_client_SOURCES = test_arakoon_client.c memory.c $(top_srcdir)/src/arakoon.h
 test_arakoon_client_CFLAGS = -I$(top_srcdir)/src
 test_arakoon_client_LDADD = $(top_builddir)/src/.libs/libarakoon-1.0.la
