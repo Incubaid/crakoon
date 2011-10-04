@@ -147,7 +147,7 @@ typedef char arakoon_bool;
  *
  * This procedure turns a given data blob into a null-terminated C-string. The
  * allocated string is returned. A call to realloc is used to achieve this, so
- * the original data pointer will be invalid after callign this procedure.
+ * the original data pointer will be invalid after calling this procedure.
  *
  * The caller is in charge of releasing the returned memory.
  */
