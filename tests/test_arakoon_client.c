@@ -43,6 +43,11 @@
                 }                                  \
         } while(0)
 
+static void log_message(ArakoonLogLevel level ARAKOON_GNUC_UNUSED,
+    const char * message) {
+        fprintf(stderr, "[LOG] %s\n", message);
+}
+
 int main(int argc, char **argv) {
         ArakoonCluster *c = NULL;
         arakoon_rc rc = 0;
@@ -67,12 +72,16 @@ int main(int argc, char **argv) {
         }
 
         arakoon_memory_set_hooks(&hooks);
+        arakoon_log_set_handler(log_message);
 
         c = arakoon_cluster_new(argv[1]);
         ABORT_IF_NULL(c, "arakoon_cluster_new");
 
         rc = arakoon_cluster_add_node_tcp(c, argv[2], argv[3], argv[4]);
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_cluster_add_node_tcp");
+
+        rc = arakoon_cluster_connect_master(c, NULL);
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_cluster_connect_master");
 
         rc = arakoon_set(c, NULL, 3, "foo", 3, "bar");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_set");

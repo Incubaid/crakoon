@@ -337,6 +337,15 @@ const char * arakoon_strerror(arakoon_rc n) {
                 case ARAKOON_RC_CLIENT_NETWORK_ERROR:
                         return "Network error in client";
                         break;
+                case ARAKOON_RC_CLIENT_UNKNOWN_NODE:
+                        return "Unknown node";
+                        break;
+                case ARAKOON_RC_CLIENT_MASTER_NOT_FOUND:
+                        return "Unable to determine master";
+                        break;
+                case ARAKOON_RC_CLIENT_NOT_CONNECTED:
+                        return "Client not connected";
+                        break;
 
                 default:
                         return "Unknown return code";
@@ -1159,6 +1168,56 @@ static arakoon_rc arakoon_cluster_node_connect(ArakoonClusterNode *node) {
         return rc;
 }
 
+#define ASSERT_ALL_WRITTEN(command, c, len)                              \
+        STMT_START                                                       \
+        if(c != command + len) {                                         \
+                log_fatal("Unexpected number of characters in command"); \
+                abort();                                                 \
+        }                                                                \
+        STMT_END
+
+static arakoon_rc arakoon_cluster_node_who_master(ArakoonClusterNode *node,
+    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
+    char ** const master) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+        void *result_data = NULL;
+        size_t result_size = 0;
+
+        FUNCTION_ENTER(arakoon_cluster_node_who_master);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN;
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x02, 0x00);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        WRITE_BYTES(node, command, len, rc);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(node, rc);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_STRING_OPTION(node, result_data, result_size,
+                rc);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                *master = NULL;
+                return rc;
+        }
+
+        *master = arakoon_utils_make_string(result_data, result_size);
+        RETURN_ENOMEM_IF_NULL(*master);
+
+        return rc;
+}
+
 static void arakoon_cluster_node_disconnect(ArakoonClusterNode *node) {
         FUNCTION_ENTER(arakoon_cluster_node_disconnect);
 
@@ -1222,6 +1281,76 @@ void arakoon_cluster_free(ArakoonCluster *cluster) {
         }
 
         arakoon_mem_free(cluster);
+}
+
+arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
+    const ArakoonClientCallOptions * const options) {
+        ArakoonClusterNode *node = NULL;
+        arakoon_rc rc = 0;
+        char *master = NULL;
+
+        FUNCTION_ENTER(arakoon_cluster_connect_master);
+
+        /* Find a node to which we can connect */
+        node = cluster->nodes;
+        while(node != NULL) {
+                rc = arakoon_cluster_node_connect(node);
+
+                if(ARAKOON_RC_IS_SUCCESS(rc)) {
+                        break;
+                }
+
+                node = node->next;
+        }
+
+        if(node == NULL) {
+                return ARAKOON_RC_CLIENT_NETWORK_ERROR;
+        }
+
+        /* Retrieve master, according to the node */
+        rc = arakoon_cluster_node_who_master(node, options, &master);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        if(strcmp(node->name, master) == 0) {
+                /* The node is master */
+                cluster->master = node;
+                arakoon_mem_free(master);
+
+                return ARAKOON_RC_SUCCESS;
+        }
+
+        /* Find master node */
+        node = cluster->nodes;
+        while(node) {
+                if(strcmp(node->name, master) == 0) {
+                        break;
+                }
+        }
+
+        arakoon_mem_free(master);
+
+        if(node == NULL) {
+                return ARAKOON_RC_CLIENT_UNKNOWN_NODE;
+        }
+
+        rc = arakoon_cluster_node_connect(node);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        /* Check whether master thinks it's master */
+        rc = arakoon_cluster_node_who_master(node, options, &master);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        if(strcmp(node->name, master) != 0) {
+                rc = ARAKOON_RC_CLIENT_MASTER_NOT_FOUND;
+        }
+        else {
+                rc = ARAKOON_RC_SUCCESS;
+                cluster->master = node;
+        }
+
+        arakoon_mem_free(master);
+
+        return rc;
 }
 
 const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster) {
@@ -1322,17 +1451,21 @@ void arakoon_client_call_options_set_allow_dirty(
 
 
 /* Client operations */
-#define ASSERT_ALL_WRITTEN(command, c, len)                              \
-        STMT_START                                                       \
-        if(c != command + len) {                                         \
-                log_fatal("Unexpected number of characters in command"); \
-                abort();                                                 \
-        }                                                                \
-        STMT_END
-
 #define READ_OPTIONS \
         const ArakoonClientCallOptions *options_ = \
                 (options == NULL ? arakoon_client_call_options_get_default() : options)
+
+#define GET_CLUSTER_MASTER(c, m)                        \
+        STMT_START                                      \
+        if(c->master == NULL) {                         \
+                return ARAKOON_RC_CLIENT_NOT_CONNECTED; \
+        }                                               \
+        if(c->master->fd < 0) {                         \
+                return ARAKOON_RC_CLIENT_NOT_CONNECTED; \
+        }                                               \
+                                                        \
+        m = c->master;                                  \
+        STMT_END
 
 arakoon_rc arakoon_hello(ArakoonCluster *cluster,
     const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
@@ -1343,8 +1476,11 @@ arakoon_rc arakoon_hello(ArakoonCluster *cluster,
         arakoon_rc rc = 0;
         void *result_data = NULL;
         size_t result_size = 0;
+        ArakoonClusterNode *master = NULL;
 
         FUNCTION_ENTER(arakoon_hello);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
         client_id_len = strlen(client_id);
         cluster_id_len = strlen(cluster_id);
@@ -1364,23 +1500,14 @@ arakoon_rc arakoon_hello(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_STRING(cluster->nodes, result_data,
+        ARAKOON_PROTOCOL_READ_STRING(master, result_data,
                 result_size, rc);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result = NULL;
@@ -1396,52 +1523,10 @@ arakoon_rc arakoon_hello(ArakoonCluster *cluster,
 arakoon_rc arakoon_who_master(ArakoonCluster *cluster,
     const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
     char ** const master) {
-        size_t len = 0;
-        char *command = NULL, *c = NULL;
-        arakoon_rc rc = 0;
-        void *result_data = NULL;
-        size_t result_size = 0;
-
         FUNCTION_ENTER(arakoon_who_master);
 
-        len = ARAKOON_PROTOCOL_COMMAND_LEN;
-
-        command = arakoon_mem_new(len, char);
-        RETURN_ENOMEM_IF_NULL(command);
-
-        c = command;
-
-        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x02, 0x00);
-
-        ASSERT_ALL_WRITTEN(command, c, len);
-
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
-        arakoon_mem_free(command);
-        RETURN_IF_NOT_SUCCESS(rc);
-
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
-        RETURN_IF_NOT_SUCCESS(rc);
-
-        ARAKOON_PROTOCOL_READ_STRING_OPTION(cluster->nodes, result_data,
-                result_size, rc);
-        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                *master = NULL;
-                return rc;
-        }
-
-        *master = arakoon_utils_make_string(result_data, result_size);
-        RETURN_ENOMEM_IF_NULL(*master);
-
-        return rc;
+        return arakoon_cluster_node_who_master(cluster->master, options,
+                master);
 }
 
 arakoon_rc arakoon_expect_progress_possible(ArakoonCluster *cluster,
@@ -1450,8 +1535,11 @@ arakoon_rc arakoon_expect_progress_possible(ArakoonCluster *cluster,
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
 
         FUNCTION_ENTER(arakoon_expect_progress_possible);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN;
 
@@ -1464,23 +1552,14 @@ arakoon_rc arakoon_expect_progress_possible(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_BOOL(cluster->nodes, *result, rc);
+        ARAKOON_PROTOCOL_READ_BOOL(master, *result, rc);
 
         return rc;
 }
@@ -1491,10 +1570,13 @@ arakoon_rc arakoon_exists(ArakoonCluster * const cluster,
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
 
         READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_exists);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN
                 + ARAKOON_PROTOCOL_BOOL_LEN
@@ -1512,23 +1594,14 @@ arakoon_rc arakoon_exists(ArakoonCluster * const cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_BOOL(cluster->nodes, *result, rc);
+        ARAKOON_PROTOCOL_READ_BOOL(master, *result, rc);
 
         return rc;
 }
@@ -1540,10 +1613,13 @@ arakoon_rc arakoon_get(ArakoonCluster *cluster,
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
 
         READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_get);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN
                 + ARAKOON_PROTOCOL_BOOL_LEN
@@ -1561,27 +1637,18 @@ arakoon_rc arakoon_get(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result_size = 0;
                 *result = NULL;
                 return rc;
         }
 
-        ARAKOON_PROTOCOL_READ_STRING(cluster->nodes, *result, *result_size, rc);
+        ARAKOON_PROTOCOL_READ_STRING(master, *result, *result_size, rc);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result_size = 0;
                 *result = NULL;
@@ -1597,8 +1664,11 @@ arakoon_rc arakoon_set(ArakoonCluster *cluster,
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
 
         FUNCTION_ENTER(arakoon_set);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN
                 + ARAKOON_PROTOCOL_STRING_LEN(key_size)
@@ -1615,20 +1685,11 @@ arakoon_rc arakoon_set(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
 
         return rc;
 }
@@ -1640,10 +1701,13 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
         ArakoonValueListItem *item = NULL;
+        ArakoonClusterNode *master = NULL;
 
         READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_multi_get);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
         *result = NULL;
 
@@ -1663,35 +1727,26 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
         for(item = keys->first; item != NULL; item = item->next) {
                 /* TODO Multi syscall vs memory copies... */
-                WRITE_BYTES(cluster->nodes, &(item->value_size), ARAKOON_PROTOCOL_UINT32_LEN, rc);
+                WRITE_BYTES(master, &(item->value_size), ARAKOON_PROTOCOL_UINT32_LEN, rc);
                 RETURN_IF_NOT_SUCCESS(rc);
 
-                WRITE_BYTES(cluster->nodes, item->value, item->value_size, rc);
+                WRITE_BYTES(master, item->value, item->value_size, rc);
                 RETURN_IF_NOT_SUCCESS(rc);
         }
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
         RETURN_IF_NOT_SUCCESS(rc);
 
         *result = arakoon_value_list_new();
         RETURN_ENOMEM_IF_NULL(*result);
 
-        ARAKOON_PROTOCOL_READ_STRING_LIST(cluster->nodes, *result, rc);
+        ARAKOON_PROTOCOL_READ_STRING_LIST(master, *result, rc);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 arakoon_value_list_free(*result);
                 *result = NULL;
@@ -1706,8 +1761,11 @@ arakoon_rc arakoon_delete(ArakoonCluster *cluster,
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
 
         FUNCTION_ENTER(arakoon_delete);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN
                 + ARAKOON_PROTOCOL_STRING_LEN(key_size);
@@ -1722,20 +1780,11 @@ arakoon_rc arakoon_delete(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
 
         return rc;
 }
@@ -1751,10 +1800,13 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
 
         READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_range);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN
                 + ARAKOON_PROTOCOL_BOOL_LEN
@@ -1780,20 +1832,11 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result = NULL;
                 return rc;
@@ -1802,7 +1845,7 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
         *result = arakoon_value_list_new();
         RETURN_ENOMEM_IF_NULL(*result);
 
-        ARAKOON_PROTOCOL_READ_STRING_LIST(cluster->nodes, *result, rc);
+        ARAKOON_PROTOCOL_READ_STRING_LIST(master, *result, rc);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 arakoon_value_list_free(*result);
                 *result = NULL;
@@ -1822,10 +1865,13 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
 
         READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_range_entries);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN
                 + ARAKOON_PROTOCOL_BOOL_LEN
@@ -1851,20 +1897,11 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result = NULL;
                 return rc;
@@ -1873,7 +1910,7 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
         *result = arakoon_key_value_list_new();
         RETURN_ENOMEM_IF_NULL(*result);
 
-        ARAKOON_PROTOCOL_READ_STRING_STRING_LIST(cluster->nodes, *result, rc);
+        ARAKOON_PROTOCOL_READ_STRING_STRING_LIST(master, *result, rc);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 arakoon_key_value_list_free(*result);
                 *result = NULL;
@@ -1890,10 +1927,13 @@ arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
 
         READ_OPTIONS;
 
         FUNCTION_ENTER(arakoon_prefix);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN
                 + ARAKOON_PROTOCOL_BOOL_LEN
@@ -1911,20 +1951,11 @@ arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
         ARAKOON_PROTOCOL_WRITE_STRING(c, begin_key, begin_key_size);
         ARAKOON_PROTOCOL_WRITE_INT32(c, max_elements);
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result = NULL;
                 return rc;
@@ -1933,7 +1964,7 @@ arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
         *result = arakoon_value_list_new();
         RETURN_ENOMEM_IF_NULL(*result);
 
-        ARAKOON_PROTOCOL_READ_STRING_LIST(cluster->nodes, *result, rc);
+        ARAKOON_PROTOCOL_READ_STRING_LIST(master, *result, rc);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 arakoon_value_list_free(*result);
                 *result = NULL;
@@ -1951,8 +1982,11 @@ arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
 
         FUNCTION_ENTER(arakoon_test_and_set);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN
                 + ARAKOON_PROTOCOL_STRING_LEN(key_size)
@@ -1971,23 +2005,14 @@ arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_STRING_OPTION(cluster->nodes, *result,
+        ARAKOON_PROTOCOL_READ_STRING_OPTION(master, *result,
                 *result_size, rc);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result = NULL;
@@ -2005,8 +2030,11 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
         ArakoonSequenceItem *item = NULL;
         char *command = NULL;
         arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
 
         FUNCTION_ENTER(arakoon_sequence);
+
+        GET_CLUSTER_MASTER(cluster, master);
 
 #define I(n) (len += n)
 
@@ -2135,20 +2163,11 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
         /* Macro changes our pointer... */
         command -= ARAKOON_PROTOCOL_COMMAND_LEN;
 
-        if(cluster->nodes->fd < 0) {
-                rc = arakoon_cluster_node_connect(cluster->nodes);
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                        arakoon_mem_free(command);
-                }
-
-                RETURN_IF_NOT_SUCCESS(rc);
-        }
-
-        WRITE_BYTES(cluster->nodes, command, len, rc);
+        WRITE_BYTES(master, command, len, rc);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(cluster->nodes, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc);
 
         return rc;
 }

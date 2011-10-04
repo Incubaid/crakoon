@@ -138,7 +138,10 @@ typedef enum {
     ARAKOON_RC_UNKNOWN_FAILURE = 0xff, /* An unknown failure occurred */
 
     /* Internal client errors */
-    ARAKOON_RC_CLIENT_NETWORK_ERROR = 0x0100 /* A client-side network error occurred */
+    ARAKOON_RC_CLIENT_NETWORK_ERROR = 0x0100, /* A client-side network error occurred */
+    ARAKOON_RC_CLIENT_UNKNOWN_NODE = 0x0200, /* An unknown node name was received */
+    ARAKOON_RC_CLIENT_MASTER_NOT_FOUND = 0x0300, /* The master node could not be determined */
+    ARAKOON_RC_CLIENT_NOT_CONNECTED = 0x0400, /* The client is not connected to a master node */
 } ArakoonReturnCode;
 
 typedef int arakoon_rc;
@@ -347,52 +350,6 @@ arakoon_rc arakoon_sequence_add_test_and_set(ArakoonSequence *sequence,
     ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 
-/* ArakoonCluster */
-typedef struct ArakoonCluster ArakoonCluster;
-
-/* Allocate a new ArakoonCluster, to be released using arakoon_cluster_free
- *
- * The given name will be copied and released in arakoon_cluster_free
- */
-ArakoonCluster * arakoon_cluster_new(const char * const name)
-    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_MALLOC
-    ARAKOON_GNUC_WARN_UNUSED_RESULT;
-/* Release an ArakoonCluster
- *
- * This will also close any open connections.
- */
-void arakoon_cluster_free(ArakoonCluster *cluster);
-/* Retrieve the name of the cluster */
-const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster)
-    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
-
-/* Add a node to the cluster
- *
- * The name will be copied and released on arakoon_cluster_free.
- * The given address struct should *not* be freed by the caller. It should
- * remain valid as long as the ArakoonCluster exists. It *will* be released
- * using freeaddrinfo(3) when arakoon_cluster_free is used. As such, a caller
- * should not re-use the pointer after calling arakoon_cluster_add_node, nor
- * pass it to any other functions (in general).
- */
-arakoon_rc arakoon_cluster_add_node(ArakoonCluster *cluster,
-    const char * const name, struct addrinfo * const address)
-    ARAKOON_GNUC_NONNULL3(1, 2, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
-/* Helper around arakoon_cluster_add_node
- *
- * This function is a helper arond arakoon_cluster_add_node to easily add
- * TCP-based connections to server nodes. The function will not reference any
- * of the given pointers after returning.
- *
- * It uses getaddrinfo(3) to look up socket connection information. Refer to the
- * corresponding manual page to know the value of 'host' and 'service'.
- */
-arakoon_rc arakoon_cluster_add_node_tcp(ArakoonCluster *cluster,
-    const char * const name, const char * const host,
-    const char * const service)
-    ARAKOON_GNUC_NONNULL4(1, 2, 3, 4)
-    ARAKOON_GNUC_WARN_UNUSED_RESULT;
-
 /* Client call options
  *
  * This struct contains some settings (to be set using accessor procedures)
@@ -431,6 +388,60 @@ arakoon_bool arakoon_client_call_options_get_allow_dirty(
 void arakoon_client_call_options_set_allow_dirty(
     ArakoonClientCallOptions * const options, arakoon_bool allow_dirty)
     ARAKOON_GNUC_NONNULL;
+
+
+/* ArakoonCluster */
+typedef struct ArakoonCluster ArakoonCluster;
+
+/* Allocate a new ArakoonCluster, to be released using arakoon_cluster_free
+ *
+ * The given name will be copied and released in arakoon_cluster_free
+ */
+ArakoonCluster * arakoon_cluster_new(const char * const name)
+    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_MALLOC
+    ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Release an ArakoonCluster
+ *
+ * This will also close any open connections.
+ */
+void arakoon_cluster_free(ArakoonCluster *cluster);
+/* Lookup the master node
+ *
+ * This should be called before performing any other operations, and whenever
+ * ARAKOON_RC_NOT_MASTER is encountered.
+ */
+arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
+    const ArakoonClientCallOptions * const options);
+/* Retrieve the name of the cluster */
+const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster)
+    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
+
+/* Add a node to the cluster
+ *
+ * The name will be copied and released on arakoon_cluster_free.
+ * The given address struct should *not* be freed by the caller. It should
+ * remain valid as long as the ArakoonCluster exists. It *will* be released
+ * using freeaddrinfo(3) when arakoon_cluster_free is used. As such, a caller
+ * should not re-use the pointer after calling arakoon_cluster_add_node, nor
+ * pass it to any other functions (in general).
+ */
+arakoon_rc arakoon_cluster_add_node(ArakoonCluster *cluster,
+    const char * const name, struct addrinfo * const address)
+    ARAKOON_GNUC_NONNULL3(1, 2, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Helper around arakoon_cluster_add_node
+ *
+ * This function is a helper arond arakoon_cluster_add_node to easily add
+ * TCP-based connections to server nodes. The function will not reference any
+ * of the given pointers after returning.
+ *
+ * It uses getaddrinfo(3) to look up socket connection information. Refer to the
+ * corresponding manual page to know the value of 'host' and 'service'.
+ */
+arakoon_rc arakoon_cluster_add_node_tcp(ArakoonCluster *cluster,
+    const char * const name, const char * const host,
+    const char * const service)
+    ARAKOON_GNUC_NONNULL4(1, 2, 3, 4)
+    ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 
 /* Client calls */
