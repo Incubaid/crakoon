@@ -46,32 +46,60 @@ static long time_delta(const struct timespec * const start,
         return (nd / NS_PER_MS) + ((end->tv_sec - start->tv_sec) * MS_PER_S);
 }
 
-arakoon_rc _arakoon_networking_poll_write(int fd, const void *data,
-    size_t count, int *timeout) {
-        size_t written = 0, to_send = count;
-        ssize_t done = 0;
-        struct timespec start = {0, 0}, now = {0, 0};
+typedef ssize_t (*NetworkActionProto) (int fd, void *buf, size_t count);
+
+typedef enum {
+        NETWORK_ACTION_READ,
+        NETWORK_ACTION_WRITE
+} NetworkAction;
+
+static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
+    int event, int fd, void *data, size_t count, int *timeout) {
+        size_t done = 0, todo = count;
+        ssize_t cnt = 0;
+
         int rc = 0;
+
+        struct timespec start = {0, 0}, now = {0, 0};
         arakoon_bool with_timeout = (timeout != NULL &&
                 *timeout != ARAKOON_CLIENT_CALL_OPTIONS_INFINITE_TIMEOUT);
         int timeout_ = 0, time_left = 0;
-        int cnt = 0;
         struct pollfd ev;
+        int ev_cnt = 0;
+
+        NetworkActionProto action_ = NULL;
+
+        switch(action) {
+                case NETWORK_ACTION_READ:
+                        action_ = read;
+                        break;
+                case NETWORK_ACTION_WRITE:
+                        action_ = (NetworkActionProto) write;
+                        break;
+
+                default:
+                        abort();
+                        break;
+        }
 
         if(with_timeout) {
+                timeout_ = *timeout;
+
+                if(timeout_ <= 0) {
+                        return ARAKOON_RC_CLIENT_TIMEOUT;
+                }
+
                 rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
 
                 if(rc != 0) {
                         return -errno;
                 }
 
-                timeout_ = *timeout;
-
                 ev.fd = fd;
-                ev.events = POLLOUT;
+                ev.events = event;
         }
 
-        while(to_send > 0) {
+        while(todo > 0) {
                 if(with_timeout) {
                         /* Wait until we can write, or timeout occurs */
                         rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &now);
@@ -81,9 +109,9 @@ arakoon_rc _arakoon_networking_poll_write(int fd, const void *data,
 
                         time_left = timeout_ - time_delta(&start, &now);
 
-                        cnt = poll(&ev, 1, time_left);
+                        ev_cnt = poll(&ev, 1, time_left);
 
-                        if(cnt < 0) {
+                        if(ev_cnt < 0) {
                                 rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID,
                                         &now);
                                 if(rc != 0) {
@@ -95,7 +123,7 @@ arakoon_rc _arakoon_networking_poll_write(int fd, const void *data,
                                 return -errno;
                         }
 
-                        if(cnt == 0) {
+                        if(ev_cnt == 0) {
                                 *timeout = 0;
                                 return ARAKOON_RC_CLIENT_NETWORK_ERROR;
                         }
@@ -124,20 +152,25 @@ arakoon_rc _arakoon_networking_poll_write(int fd, const void *data,
                                 abort();
                         }
 
-                        if(!(ev.revents & POLLOUT)) {
+                        if(!(ev.revents & event)) {
                                 continue;
                         }
                 }
 
-                done = write(fd, data + written, to_send);
+                cnt = action_(fd, data + done, todo);
 
-                if(done < 0) {
+                if(action == NETWORK_ACTION_WRITE && cnt < 0) {
                         /* TODO Handle EINTR, EAGAIN,... */
                         return -errno;
                 }
+                else if(action == NETWORK_ACTION_READ && cnt <= 0) {
+                        /* TODO Handle EINTR, EAGAIN,... */
+                        return (cnt < 0 ? -errno :
+                                ARAKOON_RC_CLIENT_NETWORK_ERROR);
+                }
 
-                to_send -= done;
-                written += done;
+                todo -= cnt;
+                done += cnt;
                 done = 0;
         }
 
@@ -150,7 +183,7 @@ arakoon_rc _arakoon_networking_poll_write(int fd, const void *data,
                 *timeout = timeout_ - time_delta(&start, &now);
         }
 
-        if(to_send == 0) {
+        if(todo == 0) {
                 return ARAKOON_RC_SUCCESS;
         }
         else {
@@ -158,122 +191,14 @@ arakoon_rc _arakoon_networking_poll_write(int fd, const void *data,
         }
 }
 
+arakoon_rc _arakoon_networking_poll_write(int fd, const void *buf,
+    size_t count, int *timeout) {
+        return _arakoon_networking_poll_act(NETWORK_ACTION_WRITE, POLLOUT,
+                fd, (void *) buf, count, timeout);
+}
+
 arakoon_rc _arakoon_networking_poll_read(int fd, void *buf, size_t count,
     int *timeout) {
-        size_t read_ = 0, to_read = count;
-        ssize_t read2 = 0;
-
-        struct timespec start = {0, 0}, now = {0, 0};
-        int rc = 0;
-        arakoon_bool with_timeout = (timeout != NULL &&
-                *timeout != ARAKOON_CLIENT_CALL_OPTIONS_INFINITE_TIMEOUT);
-        int timeout_ = 0, time_left = 0;
-        int cnt = 0;
-        struct pollfd ev;
-
-        if(with_timeout) {
-                timeout_ = *timeout;
-
-                if(timeout_ <= 0) {
-                        return ARAKOON_RC_CLIENT_TIMEOUT;
-                }
-
-                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
-
-                if(rc != 0) {
-                        return -errno;
-                }
-
-                ev.fd = fd;
-                ev.events = POLLIN;
-
-                usleep(timeout_ / 2);
-        }
-
-        while(to_read > 0) {
-                if(with_timeout) {
-                        /* Wait until we can write, or timeout occurs */
-                        rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &now);
-                        if(rc != 0) {
-                                return -errno;
-                        }
-
-                        time_left = timeout_ - time_delta(&start, &now);
-
-                        cnt = poll(&ev, 1, time_left);
-
-                        if(cnt < 0) {
-                                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID,
-                                        &now);
-                                if(rc != 0) {
-                                        return -errno;
-                                }
-
-                                *timeout = timeout_ - time_delta(&start, &now);
-
-                                return -errno;
-                        }
-
-                        if(cnt == 0) {
-                                *timeout = 0;
-                                return ARAKOON_RC_CLIENT_TIMEOUT;
-                        }
-
-                        if(ev.revents & POLLERR || ev.revents & POLLHUP ||
-                                ev.revents & POLLNVAL) {
-                                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID,
-                                        &now);
-                                if(rc != 0) {
-                                        return -errno;
-                                }
-
-                                *timeout = timeout_ - time_delta(&start, &now);
-
-                                if(ev.revents & POLLERR) {
-                                        return ARAKOON_RC_CLIENT_NETWORK_ERROR;
-                                }
-                                if(ev.revents & POLLHUP) {
-                                        return ARAKOON_RC_CLIENT_NOT_CONNECTED;
-                                }
-                                if(ev.revents & POLLNVAL) {
-                                        return ARAKOON_RC_CLIENT_NOT_CONNECTED;
-                                }
-
-                                /* Not reached */
-                                abort();
-                        }
-
-                        if(!(ev.revents & POLLIN)) {
-                                continue;
-                        }
-                }
-
-                read2 = read(fd, buf + read_, to_read);
-
-                if(read2 <= 0) {
-                        /* TODO Handle EINTR, EAGAIN,... */
-                        return (read2 < 0 ? -errno :
-                                ARAKOON_RC_CLIENT_NETWORK_ERROR);
-                }
-
-                to_read -= read2;
-                read_ += read2;
-                read2 = 0;
-        }
-
-        if(with_timeout) {
-                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &now);
-                if(rc != 0) {
-                        return -errno;
-                }
-
-                *timeout = timeout_ - time_delta(&start, &now);
-        }
-
-        if(to_read == 0) {
-                return ARAKOON_RC_SUCCESS;
-        }
-        else {
-                return ARAKOON_RC_CLIENT_NETWORK_ERROR;
-        }
+        return _arakoon_networking_poll_act(NETWORK_ACTION_READ, POLLIN,
+                fd, buf, count, timeout);
 }
