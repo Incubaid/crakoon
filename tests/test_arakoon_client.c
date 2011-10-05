@@ -43,9 +43,32 @@
                 }                                  \
         } while(0)
 
-static void log_message(ArakoonLogLevel level ARAKOON_GNUC_UNUSED,
-    const char * message) {
-        fprintf(stderr, "[LOG] %s\n", message);
+static void log_message(ArakoonLogLevel level, const char * message) {
+        const char *prefix = NULL;
+
+        switch(level) {
+                case ARAKOON_LOG_TRACE:
+                    prefix = "[TRACE]";
+                    break;
+                case ARAKOON_LOG_DEBUG:
+                    prefix = "[DEBUG]";
+                    break;
+                case ARAKOON_LOG_WARNING:
+                    prefix = "[WARNING]";
+                    break;
+                case ARAKOON_LOG_ERROR:
+                    prefix = "[ERROR]";
+                    break;
+                case ARAKOON_LOG_FATAL:
+                    prefix = "[FATAL]";
+                    break;
+
+                default:
+                    prefix = "[LOG]";
+                    break;
+        }
+
+        fprintf(stderr, "%s %s\n", prefix, message);
 }
 
 int main(int argc, char **argv) {
