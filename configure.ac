@@ -94,7 +94,6 @@ AM_MAINTAINER_MODE
 AC_PROG_CC
 AM_PROG_CC_STDC
 AM_PROG_CC_C_O
-AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
 PKG_PROG_PKG_CONFIG(0.16)
@@ -203,14 +202,25 @@ AC_TRY_COMPILE([#include <endian.h>], [#if __BYTE_ORDER == __BIG_ENDIAN
     ,AC_MSG_WARN([Could not determine endianness.])))
 fi
 
+
+crakoon_save_CFLAGS=$CFLAGS
+CFLAGS=`echo $CFLAGS | sed 's/-Werror//g'`
+
 AC_HEADER_STDC
 AC_CHECK_HEADERS([stdlib.h netdb.h sys/socket.h])
 
 AC_FUNC_MALLOC
+AC_FUNC_REALLOC
 AC_CHECK_FUNCS([strerror vsnprintf])
+AC_CHECK_FUNCS([memset])
+AC_CHECK_FUNCS([socket])
 
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
+AC_TYPE_INT32_T
+AC_TYPE_UINT32_T
+
+CFLAGS=$crakoon_save_CFLAGS
 
 AC_CONFIG_FILES([
          Makefile
