@@ -390,9 +390,9 @@ DEFINE_LOG_FUNCTION(log_fatal, ARAKOON_LOG_FATAL)
 #undef DEFINE_LOG_FUNCTION
 
 #ifdef ENABLE_TRACE
-# define FUNCTION_ENTER(n)                            \
-        STMT_START                                    \
-        log_trace("[T] Enter " ARAKOON_STRINGIFY(n)); \
+# define FUNCTION_ENTER(n)                        \
+        STMT_START                                \
+        log_trace("Enter " ARAKOON_STRINGIFY(n)); \
         STMT_END
 #else
 # define FUNCTION_ENTER(n)  \
