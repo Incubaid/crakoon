@@ -214,6 +214,7 @@ AC_FUNC_REALLOC
 AC_CHECK_FUNCS([strerror vsnprintf])
 AC_CHECK_FUNCS([memset])
 AC_CHECK_FUNCS([socket])
+AC_CHECK_FUNCS([clock_gettime])
 
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T

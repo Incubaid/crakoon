@@ -1,11 +1,13 @@
 lib_LTLIBRARIES = libarakoon-1.0.la
-libarakoon_1_0_la_SOURCES = arakoon.c arakoon.h
+libarakoon_1_0_la_SOURCES = arakoon.c arakoon.h \
+			    arakoon-networking.c arakoon-networking.h
 libarakoon_1_0_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-export-dynamic $(no_undefined) $(export_symbols)
 
 libarakoon_1_0_includedir=$(includedir)/arakoon-1.0/arakoon
 libarakoon_1_0_include_HEADERS = arakoon.h
+libarakoon_1_0_la_LIBADD = -lrt
 
 AM_CPPFLAGS = $(GLIB_DEBUG_FLAGS)
 

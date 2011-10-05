@@ -111,6 +111,7 @@
 
 #if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 3)
 # define ARAKOON_GNUC_NONNULL __attribute__((__nonnull__))
+# define ARAKOON_GNUC_NONNULL1(x) __attribute__((__nonnull__(x)))
 # define ARAKOON_GNUC_NONNULL2(x, y) __attribute__((__nonnull__(x, y)))
 # define ARAKOON_GNUC_NONNULL3(x, y, z) \
    __attribute__((__nonnull__(x, y, z)))
@@ -118,6 +119,7 @@
    __attribute__((__nonnull__(x, y, z, a)))
 #else
 # define ARAKOON_GNUC_NONNULL
+# define ARAKOON_GNUC_NONNULL1(x)
 # define ARAKOON_GNUC_NONNULL2(x, y)
 # define ARAKOON_GNUC_NONNULL3(x, y, z)
 # define ARAKOON_GNUC_NONNULL4(x, y, z, a)
@@ -142,6 +144,7 @@ typedef enum {
     ARAKOON_RC_CLIENT_UNKNOWN_NODE = 0x0200, /* An unknown node name was received */
     ARAKOON_RC_CLIENT_MASTER_NOT_FOUND = 0x0300, /* The master node could not be determined */
     ARAKOON_RC_CLIENT_NOT_CONNECTED = 0x0400, /* The client is not connected to a master node */
+    ARAKOON_RC_CLIENT_TIMEOUT = 0x0500 /* A timeout was reached */
 } ArakoonReturnCode;
 
 typedef int arakoon_rc;
@@ -362,6 +365,9 @@ arakoon_rc arakoon_sequence_add_test_and_set(ArakoonSequence *sequence,
 typedef struct ArakoonClientCallOptions ArakoonClientCallOptions;
 
 #define ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_ALLOW_DIRTY (ARAKOON_BOOL_FALSE)
+#define ARAKOON_CLIENT_CALL_OPTIONS_INFINITE_TIMEOUT (-1)
+#define ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT \
+        ARAKOON_CLIENT_CALL_OPTIONS_INFINITE_TIMEOUT
 
 /* Allocate a new ArakoonClientCallOptions structure
  *
@@ -389,6 +395,22 @@ void arakoon_client_call_options_set_allow_dirty(
     ArakoonClientCallOptions * const options, arakoon_bool allow_dirty)
     ARAKOON_GNUC_NONNULL;
 
+/* Get the current 'timeout' setting from an ArakoonClientCallOptions structure
+ *
+ * The timeout is an integer value of milliseconds. When equal to
+ * ARAKOON_CLIENT_CALL_OPTIONS_INFINITE_TIMEOUT, no timeout will be used.
+ */
+int arakoon_client_call_options_get_timeout(
+    const ArakoonClientCallOptions * const options)
+    ARAKOON_GNUC_NONNULL;
+/* Set the 'timeout' setting in an ArakoonClientCallOptions structure
+ *
+ * Use ARAKOON_CLIENT_CALL_OPTIONS_INFINITE_TIMEOUT to set an infinite (or, no)
+ * timeout.
+ */
+void arakoon_client_call_options_set_timeout(
+    ArakoonClientCallOptions * const options, int timeout)
+    ARAKOON_GNUC_NONNULL1(1);
 
 /* ArakoonCluster */
 typedef struct ArakoonCluster ArakoonCluster;

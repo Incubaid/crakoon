@@ -23,7 +23,6 @@
 
 /* TODO
  * ====
- * - Timeouts, allow_dirty,... (use _ex)
  * - Plugable communication channels (like Pyrakoon)
  * - Use TCP_CORK when using TCP sockets, wrapped around command submission
  */
@@ -36,6 +35,7 @@
 #include <errno.h>
 
 #include "arakoon.h"
+#include "arakoon-networking.h"
 
 #define ARAKOON_STRINGIFY(n) ARAKOON_STRINGIFY_ARG(n)
 #define ARAKOON_STRINGIFY_ARG(n) #n
@@ -105,202 +105,183 @@
         a += ARAKOON_PROTOCOL_BOOL_LEN;                                                     \
         STMT_END
 
-#define WRITE_BYTES(f, a, n, r)                             \
+#define WRITE_BYTES(f, a, n, r, t)                          \
         STMT_START                                          \
-        size_t _written = 0, _to_send = n;                  \
-        ssize_t _r = 0;                                     \
-        while(_to_send > 0) {                               \
-                _r = write(f->fd, a + _written, _to_send);  \
-                if(_r < 0) {                                \
-                        /* TODO EINTR handling etc. */      \
-                        r = -errno;                         \
-                        arakoon_cluster_node_disconnect(f); \
-                        break;                              \
-                }                                           \
-                                                            \
-                _to_send -= _r;                             \
-                _written += _r;                             \
-        }                                                   \
-        if(_to_send == 0) {                                 \
-                r = ARAKOON_RC_SUCCESS;                     \
+        r = _arakoon_networking_poll_write(f->fd, a, n, t); \
+        if(!ARAKOON_RC_IS_SUCCESS(r)) {                     \
+                arakoon_cluster_node_disconnect(f);         \
         }                                                   \
         STMT_END
 
-#define READ_BYTES(f, a, n, r)                                                  \
-        STMT_START                                                              \
-        size_t _read = 0, _to_read = n;                                         \
-        ssize_t _r2 = 0;                                                        \
-        while(_to_read > 0) {                                                   \
-                _r2 = read(f->fd, a + _read, _to_read);                         \
-                if(_r2 <= 0) {                                                  \
-                        /* TODO EINTR handling etc. */                          \
-                        r = _r2 < 0 ? -errno : ARAKOON_RC_CLIENT_NETWORK_ERROR; \
-                        arakoon_cluster_node_disconnect(f);                     \
-                        break;                                                  \
-                }                                                               \
-                                                                                \
-                _to_read -= _r2;                                                \
-                _read += _r2;                                                   \
-        }                                                                       \
-        if(_to_read == 0) {                                                     \
-                r = ARAKOON_RC_SUCCESS;                                         \
-        }                                                                       \
+#define READ_BYTES(f, a, n, r, t)                          \
+        STMT_START                                         \
+        r = _arakoon_networking_poll_read(f->fd, a, n, t); \
+        if(!ARAKOON_RC_IS_SUCCESS(r)) {                    \
+                arakoon_cluster_node_disconnect(f);        \
+        }                                                  \
         STMT_END
 
-#define ARAKOON_PROTOCOL_READ_UINT32(fd, r, rc)    \
-        STMT_START                                 \
-        uint32_t _d = 0;                           \
-        READ_BYTES(fd, &_d, sizeof(uint32_t), rc); \
-        if(ARAKOON_RC_IS_SUCCESS(rc)) {            \
-                r = _d;                            \
-        }                                          \
+#define ARAKOON_PROTOCOL_READ_UINT32(fd, r, rc, t)    \
+        STMT_START                                    \
+        uint32_t _d = 0;                              \
+        READ_BYTES(fd, &_d, sizeof(uint32_t), rc, t); \
+        if(ARAKOON_RC_IS_SUCCESS(rc)) {               \
+                r = _d;                               \
+        }                                             \
         STMT_END
-#define ARAKOON_PROTOCOL_READ_RC(fd, rc)           \
-        STMT_START                                 \
-        arakoon_rc _rc = 0;                        \
-        ARAKOON_PROTOCOL_READ_UINT32(fd, rc, _rc); \
-        if(!ARAKOON_RC_IS_SUCCESS(_rc)) {          \
-                rc = _rc;                          \
-        }                                          \
-        STMT_END
-
-#define ARAKOON_PROTOCOL_READ_STRING(fd, a, l, rc) \
-        STMT_START                                 \
-        uint32_t _l = 0;                           \
-        char *_d = NULL;                           \
-        arakoon_rc _rc = 0;                        \
-        ARAKOON_PROTOCOL_READ_UINT32(fd, _l, _rc); \
-        if(!ARAKOON_RC_IS_SUCCESS(_rc)) {          \
-                rc = _rc;                          \
-                break;                             \
-        }                                          \
-        _d = arakoon_mem_new(_l, char);            \
-        if(_d == NULL) {                           \
-                rc = -ENOMEM;                      \
-                break;                             \
-        }                                          \
-                                                   \
-        READ_BYTES(fd, _d, _l, _rc);               \
-        rc = _rc;                                  \
-        if(ARAKOON_RC_IS_SUCCESS(rc)) {            \
-                a = _d;                            \
-                l = _l;                            \
-        }                                          \
-        else {                                     \
-                arakoon_mem_free(_d);              \
-                l = 0;                             \
-                a = NULL;                          \
-        }                                          \
+#define ARAKOON_PROTOCOL_READ_RC(fd, rc, t)           \
+        STMT_START                                    \
+        arakoon_rc _rc = 0;                           \
+        ARAKOON_PROTOCOL_READ_UINT32(fd, rc, _rc, t); \
+        if(!ARAKOON_RC_IS_SUCCESS(_rc)) {             \
+                rc = _rc;                             \
+        }                                             \
         STMT_END
 
-#define ARAKOON_PROTOCOL_READ_STRING_OPTION(fd, a, l, rc) \
-        STMT_START                                        \
-        char _v = 0;                                      \
-        arakoon_rc _rc = 0;                               \
-        READ_BYTES(fd, &_v, 1, _rc);                      \
-        if(!ARAKOON_RC_IS_SUCCESS(_rc)) {                 \
-                a = NULL;                                 \
-                l = 0;                                    \
-                rc = _rc;                                 \
-                break;                                    \
-        }                                                 \
-                                                          \
-        if(_v == 0) {                                     \
-                l = 0;                                    \
-                a = NULL;                                 \
-                rc = _rc;                                 \
-                break;                                    \
-        }                                                 \
-                                                          \
-        ARAKOON_PROTOCOL_READ_STRING(fd, a, l, rc);       \
+#define ARAKOON_PROTOCOL_READ_STRING(fd, a, l, rc, t) \
+        STMT_START                                    \
+        uint32_t _l = 0;                              \
+        char *_d = NULL;                              \
+        arakoon_rc _rc = 0;                           \
+        ARAKOON_PROTOCOL_READ_UINT32(fd, _l, _rc, t); \
+        if(!ARAKOON_RC_IS_SUCCESS(_rc)) {             \
+                rc = _rc;                             \
+                break;                                \
+        }                                             \
+        _d = arakoon_mem_new(_l, char);               \
+        if(_d == NULL) {                              \
+                rc = -ENOMEM;                         \
+                break;                                \
+        }                                             \
+                                                      \
+        READ_BYTES(fd, _d, _l, _rc, t);               \
+        rc = _rc;                                     \
+        if(ARAKOON_RC_IS_SUCCESS(rc)) {               \
+                a = _d;                               \
+                l = _l;                               \
+        }                                             \
+        else {                                        \
+                arakoon_mem_free(_d);                 \
+                l = 0;                                \
+                a = NULL;                             \
+        }                                             \
         STMT_END
 
-#define ARAKOON_PROTOCOL_READ_BOOL(fd, r, rc)                                          \
-        STMT_START                                                                     \
-        char _r  = 0;                                                                  \
-        READ_BYTES(fd, &_r, 1, rc);                                                    \
-        if(ARAKOON_RC_IS_SUCCESS(rc)) {                                                \
-                r = _r == ARAKOON_BOOL_FALSE ? ARAKOON_BOOL_FALSE : ARAKOON_BOOL_TRUE; \
-        }                                                                              \
-        else {                                                                         \
-                r = 0;                                                                 \
-        }                                                                              \
+#define ARAKOON_PROTOCOL_READ_STRING_OPTION(fd, a, l, rc, t) \
+        STMT_START                                           \
+        char _v = 0;                                         \
+        arakoon_rc _rc = 0;                                  \
+        READ_BYTES(fd, &_v, 1, _rc, t);                      \
+        if(!ARAKOON_RC_IS_SUCCESS(_rc)) {                    \
+                a = NULL;                                    \
+                l = 0;                                       \
+                rc = _rc;                                    \
+                break;                                       \
+        }                                                    \
+                                                             \
+        if(_v == 0) {                                        \
+                l = 0;                                       \
+                a = NULL;                                    \
+                rc = _rc;                                    \
+                break;                                       \
+        }                                                    \
+                                                             \
+        ARAKOON_PROTOCOL_READ_STRING(fd, a, l, rc, t);       \
         STMT_END
 
-#define ARAKOON_PROTOCOL_READ_STRING_LIST(fd, a, rc)                                         \
-        STMT_START                                                                           \
-        uint32_t _rsl_cnt = 0, _rsl_i = 0;                                                   \
-        arakoon_rc _rsl_rc = 0;                                                              \
-        void *_rsl_s = NULL;                                                                 \
-        size_t _rsl_l = 0;                                                                   \
-                                                                                             \
-        ARAKOON_PROTOCOL_READ_UINT32(fd, _rsl_cnt, _rsl_rc);                                 \
-        if(ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                                                 \
-                for(_rsl_i = 0; _rsl_i < _rsl_cnt; _rsl_i++) {                               \
-                        _rsl_l = 0;                                                          \
-                        _rsl_s = NULL;                                                       \
-                        ARAKOON_PROTOCOL_READ_STRING(fd, _rsl_s, _rsl_l, _rsl_rc);           \
-                                                                                             \
-                        if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                                \
-                                break;                                                       \
-                        }                                                                    \
-                        else {                                                               \
-                                /* TODO This introduces a useless memcpy */                  \
-                                _rsl_rc = arakoon_value_list_prepend(a, _rsl_l, _rsl_s);     \
-                                arakoon_mem_free(_rsl_s);                                    \
-                                                                                             \
-                                if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                        \
-                                        break;                                               \
-                                }                                                            \
-                        }                                                                    \
-                }                                                                            \
-        }                                                                                    \
-                                                                                             \
-        rc = _rsl_rc;                                                                        \
+#define ARAKOON_PROTOCOL_READ_BOOL(fd, r, rc, t)                    \
+        STMT_START                                                  \
+        char _r  = 0;                                               \
+        READ_BYTES(fd, &_r, 1, rc, t);                              \
+        if(ARAKOON_RC_IS_SUCCESS(rc)) {                             \
+                r = _r == ARAKOON_BOOL_FALSE ? ARAKOON_BOOL_FALSE : \
+                    ARAKOON_BOOL_TRUE;                              \
+        }                                                           \
+        else {                                                      \
+                r = 0;                                              \
+        }                                                           \
         STMT_END
 
-#define ARAKOON_PROTOCOL_READ_STRING_STRING_LIST(fd, a, rc)                                      \
-        STMT_START                                                                               \
-        uint32_t _rsl_cnt = 0, _rsl_i = 0;                                                       \
-        arakoon_rc _rsl_rc = 0;                                                                  \
-        void *_rsl_s0 = NULL, *_rsl_s1 = NULL;                                                   \
-        size_t _rsl_l0 = 0, _rsl_l1 = 0;                                                         \
-                                                                                                 \
-        ARAKOON_PROTOCOL_READ_UINT32(fd, _rsl_cnt, _rsl_rc);                                     \
-        if(ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                                                     \
-                for(_rsl_i = 0; _rsl_i < _rsl_cnt; _rsl_i++) {                                   \
-                        _rsl_l0 = 0;                                                             \
-                        _rsl_s0 = NULL;                                                          \
-                        _rsl_l1 = 0;                                                             \
-                        _rsl_s1 = NULL;                                                          \
-                                                                                                 \
-                        ARAKOON_PROTOCOL_READ_STRING(fd, _rsl_s0, _rsl_l0, _rsl_rc);             \
-                                                                                                 \
-                        if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                                    \
-                                break;                                                           \
-                        }                                                                        \
-                        else {                                                                   \
-                                ARAKOON_PROTOCOL_READ_STRING(fd, _rsl_s1, _rsl_l1, _rsl_rc);     \
-                                if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                            \
-                                        arakoon_mem_free(_rsl_s0);                               \
-                                        break;                                                   \
-                                }                                                                \
-                                else {                                                           \
-                                        /* TODO This introduces a useless memcpy */              \
-                                        _rsl_rc = arakoon_key_value_list_prepend(a,              \
-                                                _rsl_l0, _rsl_s0, _rsl_l1, _rsl_s1);             \
-                                        arakoon_mem_free(_rsl_s0);                               \
-                                        arakoon_mem_free(_rsl_s1);                               \
-                                                                                                 \
-                                        if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                    \
-                                                break;                                           \
-                                        }                                                        \
-                                }                                                                \
-                        }                                                                        \
-                }                                                                                \
-        }                                                                                        \
-                                                                                                 \
-        rc = _rsl_rc;                                                                            \
+#define ARAKOON_PROTOCOL_READ_STRING_LIST(fd, a, rc, t)                     \
+        STMT_START                                                          \
+        uint32_t _rsl_cnt = 0, _rsl_i = 0;                                  \
+        arakoon_rc _rsl_rc = 0;                                             \
+        void *_rsl_s = NULL;                                                \
+        size_t _rsl_l = 0;                                                  \
+                                                                            \
+        ARAKOON_PROTOCOL_READ_UINT32(fd, _rsl_cnt, _rsl_rc, t);             \
+        if(ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                                \
+                for(_rsl_i = 0; _rsl_i < _rsl_cnt; _rsl_i++) {              \
+                        _rsl_l = 0;                                         \
+                        _rsl_s = NULL;                                      \
+                        ARAKOON_PROTOCOL_READ_STRING(fd, _rsl_s, _rsl_l,    \
+                                _rsl_rc, t);                                \
+                                                                            \
+                        if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {               \
+                                break;                                      \
+                        }                                                   \
+                        else {                                              \
+                                /* TODO This introduces a useless memcpy */ \
+                                _rsl_rc = arakoon_value_list_prepend(a,     \
+                                        _rsl_l, _rsl_s);                    \
+                                arakoon_mem_free(_rsl_s);                   \
+                                                                            \
+                                if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {       \
+                                        break;                              \
+                                }                                           \
+                        }                                                   \
+                }                                                           \
+        }                                                                   \
+                                                                            \
+        rc = _rsl_rc;                                                       \
+        STMT_END
+
+#define ARAKOON_PROTOCOL_READ_STRING_STRING_LIST(fd, a, rc, t)                    \
+        STMT_START                                                                \
+        uint32_t _rsl_cnt = 0, _rsl_i = 0;                                        \
+        arakoon_rc _rsl_rc = 0;                                                   \
+        void *_rsl_s0 = NULL, *_rsl_s1 = NULL;                                    \
+        size_t _rsl_l0 = 0, _rsl_l1 = 0;                                          \
+                                                                                  \
+        ARAKOON_PROTOCOL_READ_UINT32(fd, _rsl_cnt, _rsl_rc, t);                   \
+        if(ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                                      \
+                for(_rsl_i = 0; _rsl_i < _rsl_cnt; _rsl_i++) {                    \
+                        _rsl_l0 = 0;                                              \
+                        _rsl_s0 = NULL;                                           \
+                        _rsl_l1 = 0;                                              \
+                        _rsl_s1 = NULL;                                           \
+                                                                                  \
+                        ARAKOON_PROTOCOL_READ_STRING(fd, _rsl_s0, _rsl_l0,        \
+                                _rsl_rc, t);                                      \
+                                                                                  \
+                        if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {                     \
+                                break;                                            \
+                        }                                                         \
+                        else {                                                    \
+                                ARAKOON_PROTOCOL_READ_STRING(fd, _rsl_s1,         \
+                                        _rsl_l1, _rsl_rc, t);                     \
+                                if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {             \
+                                        arakoon_mem_free(_rsl_s0);                \
+                                        break;                                    \
+                                }                                                 \
+                                else {                                            \
+                                        /* TODO This introduces a useless
+                                         * memcpy */                              \
+                                        _rsl_rc = arakoon_key_value_list_prepend( \
+                                                a, _rsl_l0, _rsl_s0, _rsl_l1,     \
+                                                _rsl_s1);                         \
+                                        arakoon_mem_free(_rsl_s0);                \
+                                        arakoon_mem_free(_rsl_s1);                \
+                                                                                  \
+                                        if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {     \
+                                                break;                            \
+                                        }                                         \
+                                }                                                 \
+                        }                                                         \
+                }                                                                 \
+        }                                                                         \
+                                                                                  \
+        rc = _rsl_rc;                                                             \
         STMT_END
 
 
@@ -346,6 +327,9 @@ const char * arakoon_strerror(arakoon_rc n) {
                         break;
                 case ARAKOON_RC_CLIENT_NOT_CONNECTED:
                         return "Client not connected";
+                        break;
+                case ARAKOON_RC_CLIENT_TIMEOUT:
+                        return "Client timeout";
                         break;
 
                 default:
@@ -1112,7 +1096,8 @@ static void arakoon_cluster_node_free(ArakoonClusterNode *node) {
         arakoon_mem_free(node);
 }
 
-static arakoon_rc arakoon_cluster_node_connect(ArakoonClusterNode *node) {
+static arakoon_rc arakoon_cluster_node_connect(ArakoonClusterNode *node,
+    int *timeout) {
         struct addrinfo *rp = NULL;
         size_t n = 0, len = 0;
         char *prologue = NULL, *p = NULL;
@@ -1162,7 +1147,7 @@ static arakoon_rc arakoon_cluster_node_connect(ArakoonClusterNode *node) {
         ARAKOON_PROTOCOL_WRITE_INT32(p, ARAKOON_PROTOCOL_VERSION);
         ARAKOON_PROTOCOL_WRITE_STRING(p, node->cluster->name, n);
 
-        WRITE_BYTES(node, prologue, len, rc);
+        WRITE_BYTES(node, prologue, len, rc, timeout);
 
         arakoon_mem_free(prologue);
 
@@ -1178,8 +1163,7 @@ static arakoon_rc arakoon_cluster_node_connect(ArakoonClusterNode *node) {
         STMT_END
 
 static arakoon_rc arakoon_cluster_node_who_master(ArakoonClusterNode *node,
-    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
-    char ** const master) {
+    int *timeout, char ** const master) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
@@ -1199,15 +1183,15 @@ static arakoon_rc arakoon_cluster_node_who_master(ArakoonClusterNode *node,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        WRITE_BYTES(node, command, len, rc);
+        WRITE_BYTES(node, command, len, rc, timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(node, rc);
+        ARAKOON_PROTOCOL_READ_RC(node, rc, timeout);
         RETURN_IF_NOT_SUCCESS(rc);
 
         ARAKOON_PROTOCOL_READ_STRING_OPTION(node, result_data, result_size,
-                rc);
+                rc, timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *master = NULL;
                 return rc;
@@ -1284,18 +1268,25 @@ void arakoon_cluster_free(ArakoonCluster *cluster) {
         arakoon_mem_free(cluster);
 }
 
+
+
 arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
     const ArakoonClientCallOptions * const options) {
         ArakoonClusterNode *node = NULL;
         arakoon_rc rc = 0;
         char *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         FUNCTION_ENTER(arakoon_cluster_connect_master);
+
+        timeout = options != NULL ?
+                arakoon_client_call_options_get_timeout(options) :
+                ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         /* Find a node to which we can connect */
         node = cluster->nodes;
         while(node != NULL) {
-                rc = arakoon_cluster_node_connect(node);
+                rc = arakoon_cluster_node_connect(node, &timeout);
 
                 if(ARAKOON_RC_IS_SUCCESS(rc)) {
                         break;
@@ -1309,7 +1300,7 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
         }
 
         /* Retrieve master, according to the node */
-        rc = arakoon_cluster_node_who_master(node, options, &master);
+        rc = arakoon_cluster_node_who_master(node, &timeout, &master);
         RETURN_IF_NOT_SUCCESS(rc);
 
         if(strcmp(node->name, master) == 0) {
@@ -1334,11 +1325,11 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
                 return ARAKOON_RC_CLIENT_UNKNOWN_NODE;
         }
 
-        rc = arakoon_cluster_node_connect(node);
+        rc = arakoon_cluster_node_connect(node, &timeout);
         RETURN_IF_NOT_SUCCESS(rc);
 
         /* Check whether master thinks it's master */
-        rc = arakoon_cluster_node_who_master(node, options, &master);
+        rc = arakoon_cluster_node_who_master(node, &timeout, &master);
         RETURN_IF_NOT_SUCCESS(rc);
 
         if(strcmp(node->name, master) != 0) {
@@ -1406,11 +1397,14 @@ arakoon_rc arakoon_cluster_add_node_tcp(ArakoonCluster *cluster,
 /* Client call options */
 struct ArakoonClientCallOptions {
         arakoon_bool allow_dirty;
+        int timeout;
 };
 
-static const ArakoonClientCallOptions * arakoon_client_call_options_get_default(void) {
+static const ArakoonClientCallOptions *
+    arakoon_client_call_options_get_default(void) {
         static const ArakoonClientCallOptions options = {
-                ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_ALLOW_DIRTY
+                ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_ALLOW_DIRTY,
+                ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT
         };
 
         return &options;
@@ -1450,6 +1444,19 @@ void arakoon_client_call_options_set_allow_dirty(
         options->allow_dirty = allow_dirty;
 }
 
+int arakoon_client_call_options_get_timeout(
+    const ArakoonClientCallOptions * const options) {
+        FUNCTION_ENTER(arakoon_client_call_options_get_timeout);
+
+        return options->timeout;
+}
+
+void arakoon_client_call_options_set_timeout(
+    ArakoonClientCallOptions * const options, int timeout) {
+        FUNCTION_ENTER(arakoon_client_call_options_set_timeout);
+
+        options->timeout = timeout;
+}
 
 /* Client operations */
 #define READ_OPTIONS \
@@ -1469,7 +1476,7 @@ void arakoon_client_call_options_set_allow_dirty(
         STMT_END
 
 arakoon_rc arakoon_hello(ArakoonCluster *cluster,
-    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
+    const ArakoonClientCallOptions * const options,
     const char * const client_id, const char * const cluster_id,
     char ** const result) {
         size_t len = 0, client_id_len = 0, cluster_id_len = 0;
@@ -1478,8 +1485,12 @@ arakoon_rc arakoon_hello(ArakoonCluster *cluster,
         void *result_data = NULL;
         size_t result_size = 0;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         FUNCTION_ENTER(arakoon_hello);
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         GET_CLUSTER_MASTER(cluster, master);
 
@@ -1501,15 +1512,15 @@ arakoon_rc arakoon_hello(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
         RETURN_IF_NOT_SUCCESS(rc);
 
         ARAKOON_PROTOCOL_READ_STRING(master, result_data,
-                result_size, rc);
+                result_size, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result = NULL;
                 return rc;
@@ -1522,23 +1533,32 @@ arakoon_rc arakoon_hello(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_who_master(ArakoonCluster *cluster,
-    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
+    const ArakoonClientCallOptions * const options,
     char ** const master) {
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
+
         FUNCTION_ENTER(arakoon_who_master);
 
-        return arakoon_cluster_node_who_master(cluster->master, options,
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
+
+        return arakoon_cluster_node_who_master(cluster->master, &timeout,
                 master);
 }
 
 arakoon_rc arakoon_expect_progress_possible(ArakoonCluster *cluster,
-    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
+    const ArakoonClientCallOptions * const options,
     arakoon_bool *result) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         FUNCTION_ENTER(arakoon_expect_progress_possible);
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         GET_CLUSTER_MASTER(cluster, master);
 
@@ -1553,14 +1573,14 @@ arakoon_rc arakoon_expect_progress_possible(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_BOOL(master, *result, rc);
+        ARAKOON_PROTOCOL_READ_BOOL(master, *result, rc, &timeout);
 
         return rc;
 }
@@ -1572,8 +1592,10 @@ arakoon_rc arakoon_exists(ArakoonCluster * const cluster,
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_exists);
 
@@ -1595,14 +1617,14 @@ arakoon_rc arakoon_exists(ArakoonCluster * const cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_BOOL(master, *result, rc);
+        ARAKOON_PROTOCOL_READ_BOOL(master, *result, rc, &timeout);
 
         return rc;
 }
@@ -1615,8 +1637,10 @@ arakoon_rc arakoon_get(ArakoonCluster *cluster,
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_get);
 
@@ -1638,18 +1662,18 @@ arakoon_rc arakoon_get(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result_size = 0;
                 *result = NULL;
                 return rc;
         }
 
-        ARAKOON_PROTOCOL_READ_STRING(master, *result, *result_size, rc);
+        ARAKOON_PROTOCOL_READ_STRING(master, *result, *result_size, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result_size = 0;
                 *result = NULL;
@@ -1659,15 +1683,19 @@ arakoon_rc arakoon_get(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_set(ArakoonCluster *cluster,
-    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
+    const ArakoonClientCallOptions * const options,
     const size_t key_size, const void * const key,
     const size_t value_size, const void * const value) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         FUNCTION_ENTER(arakoon_set);
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         GET_CLUSTER_MASTER(cluster, master);
 
@@ -1686,11 +1714,11 @@ arakoon_rc arakoon_set(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
 
         return rc;
 }
@@ -1703,8 +1731,10 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
         arakoon_rc rc = 0;
         ArakoonValueListItem *item = NULL;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_multi_get);
 
@@ -1728,26 +1758,28 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
         for(item = keys->first; item != NULL; item = item->next) {
                 /* TODO Multi syscall vs memory copies... */
-                WRITE_BYTES(master, &(item->value_size), ARAKOON_PROTOCOL_UINT32_LEN, rc);
+                WRITE_BYTES(master, &(item->value_size),
+                        ARAKOON_PROTOCOL_UINT32_LEN, rc, &timeout);
                 RETURN_IF_NOT_SUCCESS(rc);
 
-                WRITE_BYTES(master, item->value, item->value_size, rc);
+                WRITE_BYTES(master, item->value, item->value_size, rc,
+                        &timeout);
                 RETURN_IF_NOT_SUCCESS(rc);
         }
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
         RETURN_IF_NOT_SUCCESS(rc);
 
         *result = arakoon_value_list_new();
         RETURN_ENOMEM_IF_NULL(*result);
 
-        ARAKOON_PROTOCOL_READ_STRING_LIST(master, *result, rc);
+        ARAKOON_PROTOCOL_READ_STRING_LIST(master, *result, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 arakoon_value_list_free(*result);
                 *result = NULL;
@@ -1757,14 +1789,18 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_delete(ArakoonCluster *cluster,
-    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
+    const ArakoonClientCallOptions * const options,
     const size_t key_size, const void * const key) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         FUNCTION_ENTER(arakoon_delete);
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         GET_CLUSTER_MASTER(cluster, master);
 
@@ -1781,11 +1817,11 @@ arakoon_rc arakoon_delete(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
 
         return rc;
 }
@@ -1802,8 +1838,10 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_range);
 
@@ -1833,11 +1871,11 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result = NULL;
                 return rc;
@@ -1846,7 +1884,7 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
         *result = arakoon_value_list_new();
         RETURN_ENOMEM_IF_NULL(*result);
 
-        ARAKOON_PROTOCOL_READ_STRING_LIST(master, *result, rc);
+        ARAKOON_PROTOCOL_READ_STRING_LIST(master, *result, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 arakoon_value_list_free(*result);
                 *result = NULL;
@@ -1867,8 +1905,10 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_range_entries);
 
@@ -1898,11 +1938,11 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result = NULL;
                 return rc;
@@ -1911,7 +1951,7 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
         *result = arakoon_key_value_list_new();
         RETURN_ENOMEM_IF_NULL(*result);
 
-        ARAKOON_PROTOCOL_READ_STRING_STRING_LIST(master, *result, rc);
+        ARAKOON_PROTOCOL_READ_STRING_STRING_LIST(master, *result, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 arakoon_key_value_list_free(*result);
                 *result = NULL;
@@ -1929,8 +1969,10 @@ arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_prefix);
 
@@ -1952,11 +1994,11 @@ arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
         ARAKOON_PROTOCOL_WRITE_STRING(c, begin_key, begin_key_size);
         ARAKOON_PROTOCOL_WRITE_INT32(c, max_elements);
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result = NULL;
                 return rc;
@@ -1965,7 +2007,7 @@ arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
         *result = arakoon_value_list_new();
         RETURN_ENOMEM_IF_NULL(*result);
 
-        ARAKOON_PROTOCOL_READ_STRING_LIST(master, *result, rc);
+        ARAKOON_PROTOCOL_READ_STRING_LIST(master, *result, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 arakoon_value_list_free(*result);
                 *result = NULL;
@@ -1975,7 +2017,7 @@ arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
-    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
+    const ArakoonClientCallOptions * const options,
     const size_t key_size, const void * const key,
     const size_t old_value_size, const void * const old_value,
     const size_t new_value_size, const void * const new_value,
@@ -1984,8 +2026,12 @@ arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
         char *command = NULL, *c = NULL;
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         FUNCTION_ENTER(arakoon_test_and_set);
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         GET_CLUSTER_MASTER(cluster, master);
 
@@ -2006,15 +2052,15 @@ arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
         RETURN_IF_NOT_SUCCESS(rc);
 
         ARAKOON_PROTOCOL_READ_STRING_OPTION(master, *result,
-                *result_size, rc);
+                *result_size, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 *result = NULL;
                 *result_size = 0;
@@ -2024,7 +2070,7 @@ arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
 }
 
 arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
-    const ArakoonClientCallOptions * const options ARAKOON_GNUC_UNUSED,
+    const ArakoonClientCallOptions * const options,
     const ArakoonSequence * const sequence) {
         size_t len = 0, i = 0;
         uint32_t count = 0;
@@ -2032,8 +2078,12 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
         char *command = NULL;
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         FUNCTION_ENTER(arakoon_sequence);
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
 
         GET_CLUSTER_MASTER(cluster, master);
 
@@ -2164,11 +2214,11 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
         /* Macro changes our pointer... */
         command -= ARAKOON_PROTOCOL_COMMAND_LEN;
 
-        WRITE_BYTES(master, command, len, rc);
+        WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        ARAKOON_PROTOCOL_READ_RC(master, rc);
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
 
         return rc;
 }
