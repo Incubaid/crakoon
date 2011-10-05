@@ -25,6 +25,7 @@
  * ====
  * - Timeouts, allow_dirty,... (use _ex)
  * - Plugable communication channels (like Pyrakoon)
+ * - Use TCP_CORK when using TCP sockets, wrapped around command submission
  */
 
 #include <stdio.h>
