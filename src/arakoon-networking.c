@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <time.h>
 #include <poll.h>
 
@@ -81,6 +82,8 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
                         abort();
                         break;
         }
+
+        memset(&ev, 0, sizeof(ev));
 
         if(with_timeout) {
                 timeout_ = *timeout;
@@ -160,11 +163,22 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
                 cnt = action_(fd, data + done, todo);
 
                 if(action == NETWORK_ACTION_WRITE && cnt < 0) {
-                        /* TODO Handle EINTR, EAGAIN,... */
+                        if(errno == EINTR || errno == EAGAIN) {
+                                continue;
+                        }
+
                         return -errno;
                 }
                 else if(action == NETWORK_ACTION_READ && cnt <= 0) {
-                        /* TODO Handle EINTR, EAGAIN,... */
+                        /* We were unable to read a single byte, even though
+                         * thanks to poll we know some data is available. This
+                         * implies something went very wrong, or we got a
+                         * 'normal' error case (EINTR, EAGAIN,...)
+                         */
+                        if(errno == EINTR || errno == EAGAIN) {
+                                continue;
+                        }
+
                         return (cnt < 0 ? -errno :
                                 ARAKOON_RC_CLIENT_NETWORK_ERROR);
                 }
