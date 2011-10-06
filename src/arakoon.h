@@ -206,6 +206,7 @@ const ArakoonMemoryHooks * arakoon_memory_get_abort_hooks(void);
 typedef enum {
     ARAKOON_LOG_TRACE,
     ARAKOON_LOG_DEBUG,
+    ARAKOON_LOG_INFO,
     ARAKOON_LOG_WARNING,
     ARAKOON_LOG_ERROR,
     ARAKOON_LOG_FATAL

@@ -35,12 +35,12 @@
                         abort();                   \
                 }                                  \
         } while(0)
-#define ABORT_IF_NOT_SUCCESS(rc, msg)              \
-        do {                                       \
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {   \
-                        fprintf(stderr, msg "\n"); \
-                        abort();                   \
-                }                                  \
+#define ABORT_IF_NOT_SUCCESS(rc, msg)                                        \
+        do {                                                                 \
+                if(!ARAKOON_RC_IS_SUCCESS(rc)) {                             \
+                        fprintf(stderr, msg ": %s\n", arakoon_strerror(rc)); \
+                        abort();                                             \
+                }                                                            \
         } while(0)
 
 static void log_message(ArakoonLogLevel level, const char * message) {
@@ -52,6 +52,9 @@ static void log_message(ArakoonLogLevel level, const char * message) {
                     break;
                 case ARAKOON_LOG_DEBUG:
                     prefix = "[DEBUG]";
+                    break;
+                case ARAKOON_LOG_INFO:
+                    prefix = "[INFO]";
                     break;
                 case ARAKOON_LOG_WARNING:
                     prefix = "[WARNING]";
@@ -74,6 +77,7 @@ static void log_message(ArakoonLogLevel level, const char * message) {
 int main(int argc, char **argv) {
         ArakoonCluster *c = NULL;
         arakoon_rc rc = 0;
+        ArakoonClientCallOptions *options = NULL;
         ArakoonValueList *r0 = NULL, *r2 = NULL;
         ArakoonValueListIter *iter0 = NULL;
         ArakoonKeyValueList *r1 = NULL;
@@ -82,6 +86,7 @@ int main(int argc, char **argv) {
         const void *v0 = NULL, *v1 = NULL;
         char *s0 = NULL, *s1 = NULL;
         ArakoonSequence *seq = NULL;
+        int i = 0;
 
         const ArakoonMemoryHooks hooks = {
                 check_arakoon_malloc,
@@ -89,26 +94,33 @@ int main(int argc, char **argv) {
                 check_arakoon_realloc
         };
 
-        if(argc < 5) {
-                fprintf(stderr, "Usage: %s cluster name host port\n", argv[0]);
+        if((argc - 2) % 3 != 0 || argc < 5) {
+                fprintf(stderr, "Usage: %s cluster [name host port]*\n",
+                        argv[0]);
                 return 1;
         }
 
         arakoon_memory_set_hooks(&hooks);
         arakoon_log_set_handler(log_message);
 
+        options = arakoon_client_call_options_new();
+        arakoon_client_call_options_set_timeout(options, 400);
+
         c = arakoon_cluster_new(argv[1]);
         ABORT_IF_NULL(c, "arakoon_cluster_new");
 
-        rc = arakoon_cluster_add_node_tcp(c, argv[2], argv[3], argv[4]);
-        ABORT_IF_NOT_SUCCESS(rc, "arakoon_cluster_add_node_tcp");
+        for(i = 2; i < argc; i++) {
+            rc = arakoon_cluster_add_node_tcp(c, argv[i], argv[i + 1], argv[i + 2]);
+            ABORT_IF_NOT_SUCCESS(rc, "arakoon_cluster_add_node_tcp");
+            i += 2;
+        }
 
-        rc = arakoon_cluster_connect_master(c, NULL);
+        rc = arakoon_cluster_connect_master(c, options);
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_cluster_connect_master");
 
         rc = arakoon_set(c, NULL, 3, "foo", 3, "bar");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_set");
-        rc = arakoon_set(c, NULL, 4, "foo2", 4, "bar2");
+        rc = arakoon_set(c, options, 4, "foo2", 4, "bar2");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_set");
 
         r0 = arakoon_value_list_new();
@@ -116,7 +128,7 @@ int main(int argc, char **argv) {
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_value_list_add");
         rc = arakoon_value_list_add(r0, 4, "foo2");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_value_list_add");
-        rc = arakoon_multi_get(c, NULL, r0, &r2);
+        rc = arakoon_multi_get(c, options, r0, &r2);
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_multi_get");
         arakoon_value_list_free(r0);
         iter0 = arakoon_value_list_create_iter(r2);
@@ -152,7 +164,7 @@ int main(int argc, char **argv) {
         arakoon_value_list_iter_free(iter0);
         arakoon_value_list_free(r0);
 
-        rc = arakoon_range_entries(c, NULL, 0, NULL, ARAKOON_BOOL_TRUE,
+        rc = arakoon_range_entries(c, options, 0, NULL, ARAKOON_BOOL_TRUE,
                 0, NULL, ARAKOON_BOOL_TRUE, -1, &r1);
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_range_entries");
 
@@ -189,6 +201,7 @@ int main(int argc, char **argv) {
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence");
         arakoon_sequence_free(seq);
 
+        arakoon_client_call_options_free(options);
         arakoon_cluster_free(c);
 
         return 0;

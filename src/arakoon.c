@@ -368,6 +368,7 @@ DEFINE_LOG_FUNCTION(log_trace, ARAKOON_LOG_TRACE)
 #define log_trace(f) STMT_START STMT_END
 #endif
 DEFINE_LOG_FUNCTION(log_debug, ARAKOON_LOG_DEBUG)
+DEFINE_LOG_FUNCTION(log_info, ARAKOON_LOG_INFO)
 DEFINE_LOG_FUNCTION(log_warning, ARAKOON_LOG_WARNING)
 DEFINE_LOG_FUNCTION(log_error, ARAKOON_LOG_ERROR)
 DEFINE_LOG_FUNCTION(log_fatal, ARAKOON_LOG_FATAL)
@@ -1283,6 +1284,8 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
 
         FUNCTION_ENTER(arakoon_cluster_connect_master);
 
+        log_debug("Looking up master node");
+
         timeout = options != NULL ?
                 arakoon_client_call_options_get_timeout(options) :
                 ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
@@ -1293,6 +1296,7 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
                 rc = arakoon_cluster_node_connect(node, &timeout);
 
                 if(ARAKOON_RC_IS_SUCCESS(rc)) {
+                        log_debug("Connected to node %s", node->name);
                         break;
                 }
 
@@ -1300,6 +1304,7 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
         }
 
         if(node == NULL) {
+                log_warning("Unable to connect to any node");
                 return ARAKOON_RC_CLIENT_NETWORK_ERROR;
         }
 
@@ -1312,6 +1317,8 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
                 cluster->master = node;
                 arakoon_mem_free(master);
 
+                log_info("Found master node %s", cluster->master->name);
+
                 return ARAKOON_RC_SUCCESS;
         }
 
@@ -1321,6 +1328,7 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
                 if(strcmp(node->name, master) == 0) {
                         break;
                 }
+                node = node->next;
         }
 
         arakoon_mem_free(master);
@@ -1329,10 +1337,14 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
                 return ARAKOON_RC_CLIENT_UNKNOWN_NODE;
         }
 
+        log_debug("Connecting to master node %s", node->name);
+
         rc = arakoon_cluster_node_connect(node, &timeout);
         RETURN_IF_NOT_SUCCESS(rc);
 
         /* Check whether master thinks it's master */
+        log_debug("Validating master node");
+
         rc = arakoon_cluster_node_who_master(node, &timeout, &master);
         RETURN_IF_NOT_SUCCESS(rc);
 
@@ -1345,6 +1357,8 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
         }
 
         arakoon_mem_free(master);
+
+        log_debug("Found master node %s", cluster->master->name);
 
         return rc;
 }
@@ -1379,6 +1393,8 @@ arakoon_rc arakoon_cluster_add_node_tcp(ArakoonCluster *cluster,
         int rc = 0;
 
         FUNCTION_ENTER(arakoon_cluster_add_node_tcp);
+
+        log_debug("Looking up node %s at %s:%s", name, host, service);
 
         memset(&hints, 0, sizeof(struct addrinfo));
         hints.ai_family = AF_UNSPEC; /* IPv4 and IPv6, whatever */
