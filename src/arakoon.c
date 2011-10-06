@@ -1088,7 +1088,9 @@ static void arakoon_cluster_node_free(ArakoonClusterNode *node) {
         RETURN_IF_NULL(node);
 
         if(node->fd >= 0) {
-                close(node->fd);
+                log_warning("Freeing a cluster node which wasn't "
+                        "disconnected before");
+                arakoon_cluster_node_disconnect(node);
         }
 
         arakoon_mem_free(node->name);
@@ -1123,6 +1125,7 @@ static arakoon_rc arakoon_cluster_node_connect(ArakoonClusterNode *node,
                         break;
                 }
 
+                shutdown(node->fd, SHUT_RDWR);
                 close(node->fd);
                 node->fd = -1;
         }
@@ -1207,6 +1210,7 @@ static void arakoon_cluster_node_disconnect(ArakoonClusterNode *node) {
         FUNCTION_ENTER(arakoon_cluster_node_disconnect);
 
         if(node->fd >= 0) {
+                shutdown(node->fd, SHUT_RDWR);
                 close(node->fd);
         }
 
