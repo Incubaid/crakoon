@@ -27,6 +27,7 @@
 #include <string.h>
 #include <time.h>
 #include <poll.h>
+#include <errno.h>
 
 #include "arakoon.h"
 #include "arakoon-networking.h"
