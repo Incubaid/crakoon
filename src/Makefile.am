@@ -7,7 +7,8 @@ libarakoon_1_0_la_SOURCES = arakoon.c arakoon.h \
 			    arakoon-cluster.c arakoon-cluster.h \
 			    arakoon-client-call-options.c arakoon-client-call-options.h \
 			    arakoon-value-list.c arakoon-value-list.h \
-			    arakoon-key-value-list.c \
+			    arakoon-key-value-list.c arakoon-key-value-list.h \
+			    arakoon-nursery-routing.c arakoon-nursery-routing.h \
 			    arakoon-protocol.h
 libarakoon_1_0_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \

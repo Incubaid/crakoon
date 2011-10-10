@@ -31,9 +31,11 @@
 #include "arakoon-cluster.h"
 #include "arakoon-cluster-node.h"
 #include "arakoon-client-call-options.h"
+#include "arakoon-nursery-routing.h"
 
 struct ArakoonNursery {
-        const ArakoonCluster * keeper;
+        const ArakoonCluster *keeper;
+        ArakoonNurseryRouting *routing;
 };
 
 ArakoonNursery * arakoon_nursery_new(const ArakoonCluster * const keeper) {
@@ -54,6 +56,7 @@ ArakoonNursery * arakoon_nursery_new(const ArakoonCluster * const keeper) {
 void arakoon_nursery_free(ArakoonNursery *nursery) {
         RETURN_IF_NULL(nursery);
 
+        _arakoon_nursery_routing_free(nursery->routing);
         arakoon_mem_free(nursery);
 }
 
@@ -64,6 +67,9 @@ arakoon_rc arakoon_nursery_update_config(ArakoonNursery *nursery,
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
         int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
+        void *routing_data = NULL;
+        size_t routing_length = 0;
+        ArakoonNurseryRouting *routing = NULL;
 
         READ_OPTIONS;
         timeout = arakoon_client_call_options_get_timeout(options_);
@@ -90,6 +96,21 @@ arakoon_rc arakoon_nursery_update_config(ArakoonNursery *nursery,
 
         ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
         RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_STRING(master, routing_data, routing_length, rc,
+                &timeout);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                arakoon_mem_free(routing);
+                return rc;
+        }
+
+        rc = _arakoon_nursery_routing_parse(routing_length, routing_data,
+                &routing);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        arakoon_mem_free(routing_data);
+
+        nursery->routing = routing;
 
         return rc;
 }

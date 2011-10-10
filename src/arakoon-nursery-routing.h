@@ -21,36 +21,21 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ARAKOON_NURSERY_H__
-#define __ARAKOON_NURSERY_H__
+#ifndef __ARAKOON_NURSERY_ROUTING_H__
+#define __ARAKOON_NURSERY_ROUTING_H__
 
 #include "arakoon.h"
 
 ARAKOON_BEGIN_DECLS
 
-/* ArakoonNursery */
-typedef struct ArakoonNursery ArakoonNursery;
+typedef struct ArakoonNurseryRouting ArakoonNurseryRouting;
 
-/* Allocate a new ArakoonNursery, to be released using arakoon_nursery_free
- *
- * The given cluster will not be copied, and should not be released until the
- * nursery is released. A call to arakoon_nursery_free will not release the
- * given cluster.
- */
-ArakoonNursery * arakoon_nursery_new(const ArakoonCluster * const keeper)
-    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_MALLOC
-    ARAKOON_GNUC_WARN_UNUSED_RESULT;
-/* Release an ArakoonNursery
- *
- * This will also close any open connections.
- */
-void arakoon_nursery_free(ArakoonNursery *nursery);
+arakoon_rc _arakoon_nursery_routing_parse(
+    size_t length, const void *data, ArakoonNurseryRouting **routing)
+    ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_NONNULL2(2, 3);
 
-/* Update nursery config */
-arakoon_rc arakoon_nursery_update_config(ArakoonNursery *nursery,
-    const ArakoonClientCallOptions * const options)
-    ARAKOON_GNUC_NONNULL1(1);
+void _arakoon_nursery_routing_free(ArakoonNurseryRouting *routing);
 
 ARAKOON_END_DECLS
 
-#endif /* ifndef __ARAKOON_NURSERY_H__ */
+#endif /* ifndef __ARAKOON_NURSERY_ROUTING_H__ */
