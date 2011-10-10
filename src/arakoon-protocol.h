@@ -92,20 +92,20 @@ ARAKOON_BEGIN_DECLS
         a += ARAKOON_PROTOCOL_BOOL_LEN;                                                     \
         STMT_END
 
-#define WRITE_BYTES(f, a, n, r, t)                          \
-        STMT_START                                          \
-        r = _arakoon_networking_poll_write(f->fd, a, n, t); \
-        if(!ARAKOON_RC_IS_SUCCESS(r)) {                     \
-                arakoon_cluster_node_disconnect(f);         \
-        }                                                   \
+#define WRITE_BYTES(f, a, n, r, t)                                                    \
+        STMT_START                                                                    \
+        r = _arakoon_networking_poll_write(_arakoon_cluster_node_get_fd(f), a, n, t); \
+        if(!ARAKOON_RC_IS_SUCCESS(r)) {                                               \
+                _arakoon_cluster_node_disconnect(f);                                  \
+        }                                                                             \
         STMT_END
 
-#define READ_BYTES(f, a, n, r, t)                          \
-        STMT_START                                         \
-        r = _arakoon_networking_poll_read(f->fd, a, n, t); \
-        if(!ARAKOON_RC_IS_SUCCESS(r)) {                    \
-                arakoon_cluster_node_disconnect(f);        \
-        }                                                  \
+#define READ_BYTES(f, a, n, r, t)                                                    \
+        STMT_START                                                                   \
+        r = _arakoon_networking_poll_read(_arakoon_cluster_node_get_fd(f), a, n, t); \
+        if(!ARAKOON_RC_IS_SUCCESS(r)) {                                              \
+                _arakoon_cluster_node_disconnect(f);                                 \
+        }                                                                            \
         STMT_END
 
 #define ARAKOON_PROTOCOL_READ_UINT32(fd, r, rc, t)    \
@@ -209,7 +209,7 @@ ARAKOON_BEGIN_DECLS
                         }                                                   \
                         else {                                              \
                                 /* TODO This introduces a useless memcpy */ \
-                                _rsl_rc = arakoon_value_list_prepend(a,     \
+                                _rsl_rc = _arakoon_value_list_prepend(a,     \
                                         _rsl_l, _rsl_s);                    \
                                 arakoon_mem_free(_rsl_s);                   \
                                                                             \
@@ -254,7 +254,7 @@ ARAKOON_BEGIN_DECLS
                                 else {                                            \
                                         /* TODO This introduces a useless
                                          * memcpy */                              \
-                                        _rsl_rc = arakoon_key_value_list_prepend( \
+                                        _rsl_rc = _arakoon_key_value_list_prepend( \
                                                 a, _rsl_l0, _rsl_s0, _rsl_l1,     \
                                                 _rsl_s1);                         \
                                         arakoon_mem_free(_rsl_s0);                \

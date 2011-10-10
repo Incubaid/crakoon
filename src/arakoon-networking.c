@@ -69,6 +69,10 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
         struct pollfd ev;
         int ev_cnt = 0;
 
+        if(fd < 0) {
+                return ARAKOON_RC_CLIENT_NOT_CONNECTED;
+        }
+
         NetworkActionProto action_ = NULL;
 
         switch(action) {

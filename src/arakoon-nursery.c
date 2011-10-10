@@ -27,6 +27,10 @@
 #include "arakoon.h"
 #include "arakoon-nursery.h"
 #include "arakoon-utils.h"
+#include "arakoon-protocol.h"
+#include "arakoon-cluster.h"
+#include "arakoon-cluster-node.h"
+#include "arakoon-client-call-options.h"
 
 struct ArakoonNursery {
         const ArakoonCluster * keeper;
@@ -51,4 +55,41 @@ void arakoon_nursery_free(ArakoonNursery *nursery) {
         RETURN_IF_NULL(nursery);
 
         arakoon_mem_free(nursery);
+}
+
+arakoon_rc arakoon_nursery_update_config(ArakoonNursery *nursery,
+    const ArakoonClientCallOptions * const options) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
+
+        FUNCTION_ENTER(arakoon_nursery_update_config);
+
+        ARAKOON_CLUSTER_GET_MASTER(nursery->keeper, master);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN;
+
+        /* TODO Use stack value? */
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x20, 0x00);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        WRITE_BYTES(master, command, len, rc, &timeout);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        return rc;
 }

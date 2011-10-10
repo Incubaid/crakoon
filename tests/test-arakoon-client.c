@@ -27,21 +27,7 @@
 
 #include "arakoon.h"
 #include "memory.h"
-
-#define ABORT_IF_NULL(p, msg)                      \
-        do {                                       \
-                if(p == NULL) {                    \
-                        fprintf(stderr, msg "\n"); \
-                        abort();                   \
-                }                                  \
-        } while(0)
-#define ABORT_IF_NOT_SUCCESS(rc, msg)                                        \
-        do {                                                                 \
-                if(!ARAKOON_RC_IS_SUCCESS(rc)) {                             \
-                        fprintf(stderr, msg ": %s\n", arakoon_strerror(rc)); \
-                        abort();                                             \
-                }                                                            \
-        } while(0)
+#include "utils.h"
 
 int main(int argc, char **argv) {
         ArakoonCluster *c = NULL;

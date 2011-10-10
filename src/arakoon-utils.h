@@ -21,6 +21,22 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __ARAKOON_UTILS_H__
+#define __ARAKOON_UTILS_H__
+
+#include <stdlib.h>
+
+#include "arakoon.h"
+
+ARAKOON_BEGIN_DECLS
+
+#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4)
+# define ARAKOON_GNUC_PRINTF( format_idx, arg_idx ) \
+  __attribute__((__format__ (__printf__, format_idx, arg_idx)))
+#else
+# define ARAKOON_GNUC_PRINTF
+#endif
+
 #define ARAKOON_STRINGIFY(n) ARAKOON_STRINGIFY_ARG(n)
 #define ARAKOON_STRINGIFY_ARG(n) #n
 
@@ -65,11 +81,32 @@ extern ArakoonMemoryHooks memory_hooks;
         (t *)(arakoon_mem_malloc(c * sizeof(t)))
 
 #ifdef ENABLE_TRACE
+void _arakoon_log_trace(const char *format, ...) ARAKOON_GNUC_PRINTF(1, 2);
+
 # define FUNCTION_ENTER(n)                        \
         STMT_START                                \
-        log_trace("Enter " ARAKOON_STRINGIFY(n)); \
+        _arakoon_log_trace("Enter " ARAKOON_STRINGIFY(n)); \
         STMT_END
+
 #else
-# define FUNCTION_ENTER(n)  \
-        STMT_START STMT_END
+# define _arakoon_log_trace(f) STMT_START STMT_END
+# define FUNCTION_ENTER(n) STMT_START STMT_END
 #endif
+void _arakoon_log_debug(const char *format, ...) ARAKOON_GNUC_PRINTF(1, 2);
+void _arakoon_log_info(const char *format, ...) ARAKOON_GNUC_PRINTF(1, 2);
+void _arakoon_log_warning(const char *format, ...) ARAKOON_GNUC_PRINTF(1, 2);
+void _arakoon_log_error(const char *format, ...) ARAKOON_GNUC_PRINTF(1, 2);
+void _arakoon_log_fatal(const char *format, ...) ARAKOON_GNUC_PRINTF(1, 2);
+
+#define ASSERT_ALL_WRITTEN(command, c, len)                            \
+        STMT_START                                                     \
+        if(c != command + len) {                                       \
+                _arakoon_log_fatal(                                    \
+                        "Unexpected number of characters in command"); \
+                abort();                                               \
+        }                                                              \
+        STMT_END
+
+ARAKOON_END_DECLS
+
+#endif /* ifndef __ARAKOON_UTILS_H__ */

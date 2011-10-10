@@ -3,7 +3,9 @@ arakoon_strerror
 arakoon_utils_make_string
 arakoon_memory_set_hooks
 arakoon_memory_get_abort_hooks
+
 arakoon_log_set_handler
+arakoon_log_get_stderr_handler
 
 arakoon_value_list_new
 arakoon_value_list_add
