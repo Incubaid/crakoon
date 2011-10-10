@@ -2,9 +2,9 @@
 *.lo
 *.la
 
-tests/check_arakoon
-tests/check_memory
-tests/test_arakoon_client
+tests/check-arakoon
+tests/check-memory
+tests/test-arakoon-client
 
 Makefile
 Makefile.in
