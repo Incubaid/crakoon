@@ -218,6 +218,8 @@ typedef void (*ArakoonLogHandler) (ArakoonLogLevel level,
 
 /* Set a log message handler procedure */
 void arakoon_log_set_handler(const ArakoonLogHandler handler);
+/* A handler which logs all messages to stderr */
+ArakoonLogHandler arakoon_log_get_stderr_handler(void);
 
 /* Value list
  *

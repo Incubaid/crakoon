@@ -97,6 +97,42 @@ void arakoon_log_set_handler(const ArakoonLogHandler handler) {
         log_handler = handler;
 }
 
+static void arakoon_log_stderr_handler(ArakoonLogLevel level,
+    const char * message) {
+        const char *prefix = NULL;
+
+        switch(level) {
+                case ARAKOON_LOG_TRACE:
+                    prefix = "[TRACE]";
+                    break;
+                case ARAKOON_LOG_DEBUG:
+                    prefix = "[DEBUG]";
+                    break;
+                case ARAKOON_LOG_INFO:
+                    prefix = "[INFO]";
+                    break;
+                case ARAKOON_LOG_WARNING:
+                    prefix = "[WARNING]";
+                    break;
+                case ARAKOON_LOG_ERROR:
+                    prefix = "[ERROR]";
+                    break;
+                case ARAKOON_LOG_FATAL:
+                    prefix = "[FATAL]";
+                    break;
+
+                default:
+                    prefix = "[LOG]";
+                    break;
+        }
+
+        fprintf(stderr, "%s %s\n", prefix, message);
+}
+
+ArakoonLogHandler arakoon_log_get_stderr_handler(void) {
+        return arakoon_log_stderr_handler;
+}
+
 #define DEFINE_LOG_FUNCTION(n, l)                         \
         void _arakoon_log_## n(const char *format, ...) { \
                 va_list args;                             \

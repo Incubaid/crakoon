@@ -43,37 +43,6 @@
                 }                                                            \
         } while(0)
 
-static void log_message(ArakoonLogLevel level, const char * message) {
-        const char *prefix = NULL;
-
-        switch(level) {
-                case ARAKOON_LOG_TRACE:
-                    prefix = "[TRACE]";
-                    break;
-                case ARAKOON_LOG_DEBUG:
-                    prefix = "[DEBUG]";
-                    break;
-                case ARAKOON_LOG_INFO:
-                    prefix = "[INFO]";
-                    break;
-                case ARAKOON_LOG_WARNING:
-                    prefix = "[WARNING]";
-                    break;
-                case ARAKOON_LOG_ERROR:
-                    prefix = "[ERROR]";
-                    break;
-                case ARAKOON_LOG_FATAL:
-                    prefix = "[FATAL]";
-                    break;
-
-                default:
-                    prefix = "[LOG]";
-                    break;
-        }
-
-        fprintf(stderr, "%s %s\n", prefix, message);
-}
-
 int main(int argc, char **argv) {
         ArakoonCluster *c = NULL;
         arakoon_rc rc = 0;
@@ -101,7 +70,7 @@ int main(int argc, char **argv) {
         }
 
         arakoon_memory_set_hooks(&hooks);
-        arakoon_log_set_handler(log_message);
+        arakoon_log_set_handler(arakoon_log_get_stderr_handler());
 
         options = arakoon_client_call_options_new();
         arakoon_client_call_options_set_timeout(options, 400);
