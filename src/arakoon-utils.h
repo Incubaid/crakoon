@@ -78,7 +78,7 @@ extern ArakoonMemoryHooks memory_hooks;
 #define arakoon_mem_realloc(p, s) (memory_hooks.realloc(p, s))
 
 #define arakoon_mem_new(c, t) \
-        (t *)(arakoon_mem_malloc(c * sizeof(t)))
+        (t *)(arakoon_mem_malloc((c) * sizeof(t)))
 
 #ifdef ENABLE_TRACE
 void _arakoon_log_trace(const char *format, ...) ARAKOON_GNUC_PRINTF(1, 2);

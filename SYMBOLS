@@ -60,3 +60,8 @@ arakoon_sequence
 # arakoon-nursery.h
 arakoon_nursery_new
 arakoon_nursery_free
+arakoon_nursery_update_routing
+arakoon_nursery_reconnect_master
+arakoon_nursery_get
+arakoon_nursery_set
+arakoon_nursery_delete

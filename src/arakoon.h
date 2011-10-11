@@ -137,6 +137,7 @@ typedef enum {
     ARAKOON_RC_NOT_MASTER = 4, /* Node is not the master */
     ARAKOON_RC_NOT_FOUND = 5, /* Not found */
     ARAKOON_RC_WRONG_CLUSTER = 6, /* An invalid cluster name was specified */
+    ARAKOON_RC_NURSERY_RANGE_ERROR = 9, /* Nursery range error */
     ARAKOON_RC_UNKNOWN_FAILURE = 0xff, /* An unknown failure occurred */
 
     /* Internal client errors */
@@ -144,7 +145,10 @@ typedef enum {
     ARAKOON_RC_CLIENT_UNKNOWN_NODE = 0x0200, /* An unknown node name was received */
     ARAKOON_RC_CLIENT_MASTER_NOT_FOUND = 0x0300, /* The master node could not be determined */
     ARAKOON_RC_CLIENT_NOT_CONNECTED = 0x0400, /* The client is not connected to a master node */
-    ARAKOON_RC_CLIENT_TIMEOUT = 0x0500 /* A timeout was reached */
+    ARAKOON_RC_CLIENT_TIMEOUT = 0x0500, /* A timeout was reached */
+    ARAKOON_RC_CLIENT_NURSERY_INVALID_ROUTING = 0x0600, /* Unable to parse routing information */
+    ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG = 0x0700 /* Invalid client config (needs update?) */
+
 } ArakoonReturnCode;
 
 typedef int arakoon_rc;

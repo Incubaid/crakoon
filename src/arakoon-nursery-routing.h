@@ -36,6 +36,9 @@ arakoon_rc _arakoon_nursery_routing_parse(
 
 void _arakoon_nursery_routing_free(ArakoonNurseryRouting *routing);
 
+ArakoonCluster * _arakoon_nursery_routing_lookup(const ArakoonNurseryRouting *routing,
+    size_t key_size, const void *key);
+
 ARAKOON_END_DECLS
 
 #endif /* ifndef __ARAKOON_NURSERY_ROUTING_H__ */

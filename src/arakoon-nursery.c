@@ -49,6 +49,7 @@ ArakoonNursery * arakoon_nursery_new(const ArakoonCluster * const keeper) {
         memset(ret, 0, sizeof(ArakoonNursery));
 
         ret->keeper = keeper;
+        ret->routing = NULL;
 
         return ret;
 }
@@ -60,7 +61,7 @@ void arakoon_nursery_free(ArakoonNursery *nursery) {
         arakoon_mem_free(nursery);
 }
 
-arakoon_rc arakoon_nursery_update_config(ArakoonNursery *nursery,
+arakoon_rc arakoon_nursery_update_routing(ArakoonNursery *nursery,
     const ArakoonClientCallOptions * const options) {
         size_t len = 0;
         char *command = NULL, *c = NULL;
@@ -75,6 +76,11 @@ arakoon_rc arakoon_nursery_update_config(ArakoonNursery *nursery,
         timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_nursery_update_config);
+
+        if(nursery->routing != NULL) {
+                _arakoon_nursery_routing_free(nursery->routing);
+                nursery->routing = NULL;
+        }
 
         ARAKOON_CLUSTER_GET_MASTER(nursery->keeper, master);
 
@@ -113,4 +119,66 @@ arakoon_rc arakoon_nursery_update_config(ArakoonNursery *nursery,
         nursery->routing = routing;
 
         return rc;
+}
+
+arakoon_rc arakoon_nursery_get(ArakoonNursery *nursery,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key,
+    size_t *result_size, void **result) {
+        ArakoonCluster *cluster = NULL;
+
+        FUNCTION_ENTER(arakoon_nursery_get);
+
+        cluster = _arakoon_nursery_routing_lookup(nursery->routing, key_size, key);
+        if(cluster == NULL) {
+                return ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG;
+        }
+
+        return arakoon_get(cluster, options, key_size, key, result_size, result);
+}
+
+arakoon_rc arakoon_nursery_set(ArakoonNursery *nursery,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key,
+    const size_t value_size, const void * const value) {
+        ArakoonCluster *cluster = NULL;
+
+        FUNCTION_ENTER(arakoon_nursery_set);
+
+        cluster = _arakoon_nursery_routing_lookup(nursery->routing, key_size, key);
+        if(cluster == NULL) {
+                return ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG;
+        }
+
+        return arakoon_set(cluster, options, key_size, key, value_size, value);
+}
+
+arakoon_rc arakoon_nursery_delete(ArakoonNursery *nursery,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key) {
+        ArakoonCluster *cluster = NULL;
+
+        FUNCTION_ENTER(arakoon_nursery_delete);
+
+        cluster = _arakoon_nursery_routing_lookup(nursery->routing, key_size, key);
+        if(cluster == NULL) {
+                return ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG;
+        }
+
+        return arakoon_delete(cluster, options, key_size, key);
+}
+
+arakoon_rc arakoon_nursery_reconnect_master(const ArakoonNursery *nursery,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key) {
+        ArakoonCluster *cluster = NULL;
+
+        FUNCTION_ENTER(arakoon_nursery_reconnect_master);
+
+        cluster = _arakoon_nursery_routing_lookup(nursery->routing, key_size, key);
+        if(cluster == NULL) {
+                return ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG;
+        }
+
+        return arakoon_cluster_connect_master(cluster, options);
 }

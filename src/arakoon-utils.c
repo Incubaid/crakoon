@@ -56,6 +56,9 @@ const char * arakoon_strerror(arakoon_rc n) {
                 case ARAKOON_RC_WRONG_CLUSTER:
                         return "Wrong cluster";
                         break;
+                case ARAKOON_RC_NURSERY_RANGE_ERROR:
+                        return "Wrong range in nursery";
+                        break;
                 case ARAKOON_RC_UNKNOWN_FAILURE:
                         return "Unknown failure";
                         break;
@@ -74,6 +77,13 @@ const char * arakoon_strerror(arakoon_rc n) {
                         break;
                 case ARAKOON_RC_CLIENT_TIMEOUT:
                         return "Client timeout";
+                        break;
+
+                case ARAKOON_RC_CLIENT_NURSERY_INVALID_ROUTING:
+                        return "Client unable to parse nursery routing table";
+                        break;
+                case ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG:
+                        return "Client contains invalid nursery routing table";
                         break;
 
                 default:

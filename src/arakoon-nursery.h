@@ -47,9 +47,39 @@ ArakoonNursery * arakoon_nursery_new(const ArakoonCluster * const keeper)
 void arakoon_nursery_free(ArakoonNursery *nursery);
 
 /* Update nursery config */
-arakoon_rc arakoon_nursery_update_config(ArakoonNursery *nursery,
+arakoon_rc arakoon_nursery_update_routing(ArakoonNursery *nursery,
     const ArakoonClientCallOptions * const options)
-    ARAKOON_GNUC_NONNULL1(1);
+    ARAKOON_GNUC_NONNULL1(1) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+
+/* Force a reconnect to the master serving a given key */
+arakoon_rc arakoon_nursery_reconnect_master(const ArakoonNursery *nursery,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key)
+    ARAKOON_GNUC_NONNULL2(1, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+
+/* Actions */
+/* Send a 'get' call to the nursery
+ *
+ * The resulting value will be stored at 'result', and its length at
+ * 'result_size'. 'result' should be released by the caller when no longer
+ * required.
+ */
+arakoon_rc arakoon_nursery_get(ArakoonNursery *nursery,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key,
+    size_t *result_size, void **result)
+    ARAKOON_GNUC_NONNULL4(1, 4, 5, 6) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'set' call to the nursery */
+arakoon_rc arakoon_nursery_set(ArakoonNursery *nursery,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key,
+    const size_t value_size, const void * const value)
+    ARAKOON_GNUC_NONNULL3(1, 4, 6) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'delete' call to the nursery */
+arakoon_rc arakoon_nursery_delete(ArakoonNursery *nursery,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key)
+    ARAKOON_GNUC_NONNULL2(1, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 ARAKOON_END_DECLS
 
