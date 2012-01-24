@@ -198,7 +198,7 @@ static uint32_t _read_uint32(const void **data) {
         uint32_t res = 0;
 
         res = *(uint32_t *)(*data);
-        *(char **)data += sizeof(uint32_t);
+        *data += sizeof(uint32_t);
 
         return res;
 }
