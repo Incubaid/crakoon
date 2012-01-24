@@ -5,6 +5,7 @@
 tests/check-arakoon
 tests/check-memory
 tests/test-arakoon-client
+tests/test-nursery-client
 
 Makefile
 Makefile.in
