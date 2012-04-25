@@ -1,4 +1,4 @@
-TESTS = check-memory check-arakoon
+TESTS = check-memory check-arakoon check-tests.py
 
 check_PROGRAMS = check-memory check-arakoon
 noinst_PROGRAMS = test-arakoon-client test-nursery-client
