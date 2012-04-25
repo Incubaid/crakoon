@@ -15,7 +15,7 @@ except ImportError:
     import StringIO
 
 PATH = os.getcwd()
-NAME = os.environ.get('ARAKOON_EXECUTABLE_NAME', 'arakoon.native')
+NAME = os.environ.get('ARAKOON_EXECUTABLE_NAME', 'arakoon')
 EXECUTABLE = os.path.abspath(os.path.join(os.getcwd(), NAME))
 BASE_PORT = 5000
 
