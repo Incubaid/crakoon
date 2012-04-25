@@ -1,11 +1,14 @@
 *.o
 *.lo
 *.la
+tags
 
 tests/check-arakoon
 tests/check-memory
 tests/test-arakoon-client
 tests/test-nursery-client
+
+tests/arakoon.native
 
 Makefile
 Makefile.in
