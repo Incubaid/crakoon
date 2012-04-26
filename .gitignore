@@ -9,6 +9,7 @@ tests/test-arakoon-client
 tests/test-nursery-client
 
 tests/arakoon.native
+tests/arakoon
 
 Makefile
 Makefile.in
