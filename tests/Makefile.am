@@ -2,6 +2,9 @@ TESTS = check-memory check-arakoon check-tests.py
 
 check_PROGRAMS = check-memory check-arakoon
 noinst_PROGRAMS = test-arakoon-client test-nursery-client
+check_SCRIPTS = check-tests.py
+
+EXTRA_DIST = check-tests.py
 
 check_arakoon_SOURCES = check-arakoon.c memory.c memory.h $(top_srcdir)/src/arakoon.h
 check_arakoon_CFLAGS = @CHECK_CFLAGS@ -I$(top_srcdir)/src

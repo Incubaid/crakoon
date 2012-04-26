@@ -2,6 +2,7 @@
 
 import os
 import os.path
+import sys
 import time
 import shutil
 import logging
@@ -18,12 +19,6 @@ PATH = os.getcwd()
 NAME = os.environ.get('ARAKOON_EXECUTABLE_NAME', 'arakoon')
 EXECUTABLE = os.path.abspath(os.path.join(os.getcwd(), NAME))
 BASE_PORT = 5000
-
-if not os.path.isfile(EXECUTABLE):
-    raise RuntimeError('Arakoon not found at %s' % EXECUTABLE)
-
-if not os.access(EXECUTABLE, os.X_OK):
-    raise RuntimeError('Arakoon binary not executable at %s' % EXECUTABLE)
 
 @contextlib.contextmanager
 def arakoon_cluster(n):
@@ -115,6 +110,22 @@ def test_arakoon_client():
         subprocess.check_call(args)
 
 def main():
+    if 'MAKE_DISTCHECK' in os.environ:
+        def report(msg):
+            logging.fatal(msg)
+
+            # Skip this test
+            sys.exit(77)
+    else:
+        def report(msg):
+            raise RuntimeError(msg)
+
+    if not os.path.isfile(EXECUTABLE):
+        report('Arakoon not found at %s' % EXECUTABLE)
+
+    if not os.access(EXECUTABLE, os.X_OK):
+        report('Arakoon binary not executable at %s' % EXECUTABLE)
+
     test_arakoon_client()
 
 if __name__ == '__main__':

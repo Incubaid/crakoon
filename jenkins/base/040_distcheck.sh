@@ -2,4 +2,4 @@
 
 make distclean
 ./configure
-make distcheck
+MAKE_DISTCHECK=1 make distcheck
