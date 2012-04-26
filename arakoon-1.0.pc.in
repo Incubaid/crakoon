@@ -1,4 +1,5 @@
 prefix=@prefix@
+exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
@@ -6,4 +7,4 @@ Name: Arakoon
 Description: A C client library for Arakoon.
 Version: @PACKAGE_VERSION@
 Libs: -L${libdir} -larakoon-1.0
-Cflags: -I#{includedir}/arakoon-1.0
+Cflags: -I${includedir}/arakoon-1.0
