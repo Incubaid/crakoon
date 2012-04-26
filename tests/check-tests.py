@@ -93,11 +93,23 @@ log_level = info
         logging.info('Removing tree %s', base)
         shutil.rmtree(base)
 
-def test_arakoon_client():
+def test_arakoon_client(valgrind):
     # Run against a single node for now, since the testcase itself doesn't
     # handle master switches
     with arakoon_cluster(1) as (cluster, nodes):
-        args = [os.path.join(PATH, 'test-arakoon-client')]
+        if valgrind:
+            args = \
+                'libtool --mode=execute ' + \
+                'valgrind --tool=memcheck --track-fds=yes ' + \
+                '--error-exitcode=1 --leak-check=full ' + \
+                '--leak-resolution=high --show-reachable=yes ' + \
+                '--undef-value-errors=yes --trace-children=yes'
+            args = args.split()
+
+        else:
+            args = []
+
+        args.append(os.path.join(PATH, 'test-arakoon-client'))
 
         args.append(cluster)
 
@@ -108,6 +120,13 @@ def test_arakoon_client():
 
         logging.info('Running "%s"', ' '.join(args))
         subprocess.check_call(args)
+
+def has_valgrind():
+    try:
+        subprocess.check_output('valgrind --help'.split())
+        return True
+    except subprocess.CalledProcessError:
+        return False
 
 def main():
     if 'MAKE_DISTCHECK' in os.environ:
@@ -126,7 +145,11 @@ def main():
     if not os.access(EXECUTABLE, os.X_OK):
         report('Arakoon binary not executable at %s' % EXECUTABLE)
 
-    test_arakoon_client()
+    test_arakoon_client(valgrind=False)
+    if has_valgrind():
+        test_arakoon_client(valgrind=True)
+    else:
+        logging.warning('Skipping Valgrind test')
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
