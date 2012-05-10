@@ -125,6 +125,14 @@
 # define ARAKOON_GNUC_NONNULL4(x, y, z, a)
 #endif
 
+#if __GNUC__ > 2 && defined(__OPTIMIZE__)
+# define ARAKOON_GNUC_LIKELY(expr) (__builtin_expect(!!(expr), 1))
+# define ARAKOON_GNUC_UNLIKELY(expr) (__builtin_expect(!!(expr), 0))
+#else
+# define ARAKOON_GNUC_LIKELY(expr) (expr)
+# define ARAKOON_GNUC_UNLIKELY(expr) (expr)
+#endif
+
 ARAKOON_BEGIN_DECLS
 
 /* Return code values contained in arakoon_rc variables, if non-negative */
@@ -158,7 +166,7 @@ typedef int arakoon_rc;
 /* Convert and cast an arakoon_rc value to the corresponding (positive!) errno value */
 #define ARAKOON_RC_AS_ERRNO(n) ((typeof(errno))(-n))
 /*Check whether a given arakoon_rc value denotes success */
-#define ARAKOON_RC_IS_SUCCESS(n) (n == 0)
+#define ARAKOON_RC_IS_SUCCESS(n) (ARAKOON_GNUC_LIKELY(n == 0))
 /* Check whether a given arakoon_rc value is an ArakoonReturnCode */
 #define ARAKOON_RC_IS_ARAKOONRETURNCODE (n >= 0)
 /* Convert and cast an arakoon_rc value into an ArakoonReturnCode */
