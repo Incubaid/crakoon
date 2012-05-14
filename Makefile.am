@@ -1,5 +1,7 @@
+ACLOCAL_AMFLAGS = -I m4
+EXTRA_DIST = scripts/wrap-compiler-for-flag-check
+
 SUBDIRS = src . tests
-EXTRA_DIST =
 
 AM_CPPFLAGS = @CRAKOON_DEBUG_FLAGS@
 
