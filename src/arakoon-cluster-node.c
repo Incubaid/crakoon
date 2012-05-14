@@ -199,8 +199,13 @@ arakoon_rc _arakoon_cluster_node_who_master(ArakoonClusterNode *node,
                 return rc;
         }
 
-        *master = arakoon_utils_make_string(result_data, result_size);
-        RETURN_ENOMEM_IF_NULL(*master);
+        if(result_data == NULL) {
+                *master = NULL;
+        }
+        else {
+                *master = arakoon_utils_make_string(result_data, result_size);
+                RETURN_ENOMEM_IF_NULL(*master);
+        }
 
         return rc;
 }
