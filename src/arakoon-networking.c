@@ -190,7 +190,6 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
 
                 todo -= cnt;
                 done += cnt;
-                done = 0;
         }
 
         if(with_timeout) {
