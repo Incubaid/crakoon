@@ -495,7 +495,10 @@ arakoon_rc arakoon_hello(ArakoonCluster *cluster,
 /* Send a 'who_master' call to the server
  *
  * The name of the master node as returned by the server will be stored at
- * 'result', which should be released by the caller when no longer required.
+ * 'master', which should be released by the caller when no longer required.
+ * Do note the result as stored in 'master' can be 'NULL' even though the
+ * return code is 'ARAKOON_RC_SUCCESS'. This denotes a 'None' return by the
+ * server, which implies the master is unknown at the time of the request.
  */
 arakoon_rc arakoon_who_master(ArakoonCluster *cluster,
     const ArakoonClientCallOptions * const options, char ** master)

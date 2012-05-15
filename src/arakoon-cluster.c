@@ -112,7 +112,24 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
                 if(ARAKOON_RC_IS_SUCCESS(rc)) {
                         _arakoon_log_debug("Connected to node %s",
                                 _arakoon_cluster_node_get_name(node));
-                        break;
+
+                        rc = _arakoon_cluster_node_who_master(node, &timeout,
+                                &master);
+
+                        if(ARAKOON_RC_IS_SUCCESS(rc) && master != NULL) {
+                                break;
+                        }
+                        else if(ARAKOON_RC_IS_SUCCESS(rc)) {
+                                _arakoon_log_debug(
+                                        "Node %s doesn't know who's master",
+                                        _arakoon_cluster_node_get_name(node));
+                        }
+                        else {
+                                _arakoon_log_info(
+                                        "Error during who_master call to %s: %s",
+                                        _arakoon_cluster_node_get_name(node),
+                                        arakoon_strerror(rc));
+                        }
                 }
 
                 node = _arakoon_cluster_node_get_next(node);
@@ -122,10 +139,6 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
                 _arakoon_log_warning("Unable to connect to any node");
                 return ARAKOON_RC_CLIENT_NETWORK_ERROR;
         }
-
-        /* Retrieve master, according to the node */
-        rc = _arakoon_cluster_node_who_master(node, &timeout, &master);
-        RETURN_IF_NOT_SUCCESS(rc);
 
         if(strcmp(_arakoon_cluster_node_get_name(node), master) == 0) {
                 /* The node is master */
