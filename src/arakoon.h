@@ -168,9 +168,9 @@ typedef int arakoon_rc;
 /*Check whether a given arakoon_rc value denotes success */
 #define ARAKOON_RC_IS_SUCCESS(n) (ARAKOON_GNUC_LIKELY(n == 0))
 /* Check whether a given arakoon_rc value is an ArakoonReturnCode */
-#define ARAKOON_RC_IS_ARAKOONRETURNCODE (n >= 0)
+#define ARAKOON_RC_IS_ARAKOONRETURNCODE(n) (n >= 0)
 /* Convert and cast an arakoon_rc value into an ArakoonReturnCode */
-#define ARAKOON_RC_AS_ARAKOONRETURNCODE ((ArakoonReturnCode) n)
+#define ARAKOON_RC_AS_ARAKOONRETURNCODE(n) ((ArakoonReturnCode) n)
 
 /* Turn an arakoon_rc value into a human-readable string representation
  *
