@@ -9,7 +9,8 @@ libarakoon_1_0_la_SOURCES = arakoon.c arakoon.h \
 			    arakoon-value-list.c arakoon-value-list.h \
 			    arakoon-key-value-list.c arakoon-key-value-list.h \
 			    arakoon-nursery-routing.c arakoon-nursery-routing.h \
-			    arakoon-protocol.h
+			    arakoon-protocol.h \
+			    arakoon-assert.c arakoon-assert.h
 libarakoon_1_0_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-export-dynamic $(no_undefined) $(export_symbols) \
