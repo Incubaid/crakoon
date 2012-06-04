@@ -75,7 +75,7 @@ arakoon_rc arakoon_nursery_update_routing(ArakoonNursery *nursery,
         READ_OPTIONS;
         timeout = arakoon_client_call_options_get_timeout(options_);
 
-        FUNCTION_ENTER(arakoon_nursery_update_config);
+        FUNCTION_ENTER(arakoon_nursery_update_routing);
 
         if(nursery->routing != NULL) {
                 _arakoon_nursery_routing_free(nursery->routing);
