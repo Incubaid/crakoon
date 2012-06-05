@@ -36,6 +36,31 @@
         STMT_START              \
         STMT_END
 #else /* ifndef ARAKOON_ASSERT */
+
+/*
+ * Note
+ * ----
+ * Do not consider re-implementing the macros below without an actual function
+ * call. This will break things and make you lose precious time.
+ *
+ * Here's why: lots of procedures in the public API are marked using the
+ * 'nonnull' GCC attribute for certain arguments. The GCC authors interpret
+ * this in 2 different ways: warnings are emitted when NULL is passed (jay!),
+ * but they also consider this an optimization opportunity (bleh).
+ *
+ * As such an in-procedure NULL-check can simply be removed from the generated
+ * code. Which is certainly not what we want.
+ *
+ * Whilst we want to keep the compile-time warning.
+ *
+ * So we need to push the NULL-check into a different function (which lives
+ * inside a different module so it's not inlined and removed anyway).
+ *
+ * More information:
+ * https://chtekk.longitekk.com/blog/2010/04/19/gcc's-__attribute__-((nonnull-(...)))-not-helpful-at-all/
+ * http://gcc.gnu.org/bugzilla/show_bug.cgi?id=36166
+ */
+
 # define ASSERT_NON_NULL(v)                                            \
         STMT_START                                                     \
         if(ARAKOON_GNUC_UNLIKELY(!_arakoon_assert_non_null(            \
