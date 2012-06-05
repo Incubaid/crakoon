@@ -78,7 +78,7 @@
         STMT_END
 #endif /* ifndef ARAKOON_ASSERT */
 
-arakoon_bool _arakoon_assert_non_null(void *value, const char *name,
+arakoon_bool _arakoon_assert_non_null(const void *value, const char *name,
     const char *file, unsigned int line, const char *function);
 
 #endif /* ifndef __ARAKOON_ASSERT_H__ */

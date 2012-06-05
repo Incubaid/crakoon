@@ -33,7 +33,7 @@
 # define MAYBE_UNUSED
 #endif
 
-arakoon_bool _arakoon_assert_non_null(void *value,
+arakoon_bool _arakoon_assert_non_null(const void *value,
     const char *name MAYBE_UNUSED, const char *file MAYBE_UNUSED,
     unsigned int line MAYBE_UNUSED, const char *function MAYBE_UNUSED) {
         if(value != NULL) {
