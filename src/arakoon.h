@@ -449,6 +449,15 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
 /* Retrieve the name of the cluster */
 const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
+/* Retrieve the last error message received through the cluster
+ *
+ * Note you'll get a reference to a string which will be free'd upon the next
+ * call using the cluster, or whenever the cluster is free'd. As such you
+ * should create your own copy of the string for further usage, if required.
+ */
+const char * arakoon_cluster_get_last_error(
+    const ArakoonCluster * const cluster)
+    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
 
 /* Add a node to the cluster
  *

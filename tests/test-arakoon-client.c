@@ -38,6 +38,7 @@ int main(int argc, char **argv) {
         ArakoonKeyValueList *r1 = NULL;
         ArakoonKeyValueListIter *iter1 = NULL;
         size_t l0 = 0, l1 = 0;
+        void *d0 = NULL;
         const void *v0 = NULL, *v1 = NULL;
         char *s0 = NULL, *s1 = NULL;
         ArakoonSequence *seq = NULL;
@@ -73,9 +74,17 @@ int main(int argc, char **argv) {
         rc = arakoon_cluster_connect_master(c, options);
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_cluster_connect_master");
 
+        rc = arakoon_get(c, NULL, 3, "foo", &l0, &d0);
+        if(rc != ARAKOON_RC_NOT_FOUND) {
+                fprintf(stderr, "Unset value found\n");
+                abort();
+        }
+
         rc = arakoon_set(c, NULL, 3, "foo", 3, "bar");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_set");
         rc = arakoon_set(c, options, 4, "foo2", 4, "bar2");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_set");
+        rc = arakoon_set(c, NULL, 7, "testkey", 9, "testvalue");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_set");
 
         r0 = arakoon_value_list_new();

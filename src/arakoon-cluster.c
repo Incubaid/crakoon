@@ -31,6 +31,8 @@
 struct ArakoonCluster {
         char * name;
 
+        char * last_error;
+
         ArakoonClusterNode * nodes;
         ArakoonClusterNode * master;
 };
@@ -56,6 +58,7 @@ ArakoonCluster * arakoon_cluster_new(const char * const name) {
 
         strncpy(ret->name, name, len);
 
+        ret->last_error = NULL;
         ret->nodes = NULL;
         ret->master = NULL;
 
@@ -80,6 +83,7 @@ void arakoon_cluster_free(ArakoonCluster *cluster) {
         RETURN_IF_NULL(cluster);
 
         arakoon_mem_free(cluster->name);
+        arakoon_mem_free(cluster->last_error);
 
         node = cluster->nodes;
         while(node != NULL) {
@@ -206,6 +210,22 @@ const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster) {
         return cluster->name;
 }
 
+const char * arakoon_cluster_get_last_error(
+    const ArakoonCluster * const cluster) {
+        FUNCTION_ENTER(arakoon_cluster_get_last_error);
+
+        ASSERT_NON_NULL(cluster);
+
+        return cluster->last_error;
+}
+
+void _arakoon_cluster_set_last_error(ArakoonCluster * const cluster,
+    char * const message) {
+        FUNCTION_ENTER(_arakoon_cluster_set_last_error);
+
+        cluster->last_error = message;
+}
+
 arakoon_rc arakoon_cluster_add_node(ArakoonCluster *cluster,
     const char * const name, struct addrinfo * const address) {
         ArakoonClusterNode *node = NULL;
@@ -273,4 +293,11 @@ ArakoonClusterNode * _arakoon_cluster_get_master(
         }
 
         return cluster->master;
+}
+
+void _arakoon_cluster_reset_last_error(ArakoonCluster * const cluster) {
+        FUNCTION_ENTER(_arakooon_cluster_reset_error);
+
+        arakoon_mem_free(cluster->last_error);
+        cluster->last_error = NULL;
 }

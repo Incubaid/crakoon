@@ -39,6 +39,10 @@ ArakoonClusterNode * _arakoon_cluster_get_master(const ArakoonCluster * const cl
         }                                               \
         STMT_END
 
+void _arakoon_cluster_reset_last_error(ArakoonCluster * const cluster);
+void _arakoon_cluster_set_last_error(
+    ArakoonCluster * const cluster, char * const message);
+
 ARAKOON_END_DECLS
 
 #endif /* ifndef __ARAKOON_CLUSTER_H__ */
