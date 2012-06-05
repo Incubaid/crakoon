@@ -49,8 +49,7 @@ typedef struct ArakoonSequenceItem ArakoonSequenceItem;
 struct ArakoonSequenceItem {
         enum {
                 ARAKOON_SEQUENCE_ITEM_TYPE_SET,
-                ARAKOON_SEQUENCE_ITEM_TYPE_DELETE,
-                ARAKOON_SEQUENCE_ITEM_TYPE_TEST_AND_SET
+                ARAKOON_SEQUENCE_ITEM_TYPE_DELETE
         } type;
 
         union {
@@ -65,15 +64,6 @@ struct ArakoonSequenceItem {
                         size_t key_size;
                         void * key;
                 } delete;
-
-                struct {
-                        size_t key_size;
-                        void * key;
-                        size_t old_value_size;
-                        void * old_value;
-                        size_t new_value_size;
-                        void * new_value;
-                } test_and_set;
         } data;
 
         ArakoonSequenceItem * next;
@@ -89,11 +79,6 @@ static void arakoon_sequence_item_free(ArakoonSequenceItem *item) {
                 }; break;
                 case ARAKOON_SEQUENCE_ITEM_TYPE_DELETE: {
                         arakoon_mem_free(item->data.delete.key);
-                }; break;
-                case ARAKOON_SEQUENCE_ITEM_TYPE_TEST_AND_SET: {
-                        arakoon_mem_free(item->data.test_and_set.key);
-                        arakoon_mem_free(item->data.test_and_set.old_value);
-                        arakoon_mem_free(item->data.test_and_set.new_value);
                 }; break;
                 default: {
                         _arakoon_log_fatal("Unknown sequence item type");
@@ -213,27 +198,6 @@ arakoon_rc arakoon_sequence_add_delete(ArakoonSequence *sequence,
         COPY_STRING(delete, key);
 
         POSTLUDIUM(arakoon_sequence_add_delete);
-}
-
-arakoon_rc arakoon_sequence_add_test_and_set(ArakoonSequence *sequence,
-    const size_t key_size, const void * const key,
-    const size_t old_value_size, const void * const old_value,
-    const size_t new_value_size, const void * const new_value) {
-        PRELUDE(arakoon_sequence_add_test_and_set);
-
-        ASSERT_NON_NULL_RC(sequence);
-        ASSERT_NON_NULL_RC(key);
-        ASSERT_NON_NULL_RC(old_value);
-        ASSERT_NON_NULL_RC(new_value);
-
-        OUVERTURE(ARAKOON_SEQUENCE_ITEM_TYPE_TEST_AND_SET);
-
-        COPY_STRING(test_and_set, key);
-
-        COPY_STRING_OPTION(test_and_set, old_value);
-        COPY_STRING_OPTION(test_and_set, new_value);
-
-        POSTLUDIUM(arakoon_sequence_add_test_and_set);
 }
 
 #undef PRELUDE
@@ -931,13 +895,6 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
                         case ARAKOON_SEQUENCE_ITEM_TYPE_DELETE: {
                                 I(ARAKOON_PROTOCOL_STRING_LEN(item->data.delete.key_size));
                         }; break;
-                        case ARAKOON_SEQUENCE_ITEM_TYPE_TEST_AND_SET: {
-                                I(ARAKOON_PROTOCOL_STRING_LEN(item->data.test_and_set.key_size));
-                                I(ARAKOON_PROTOCOL_STRING_OPTION_LEN(item->data.test_and_set.old_value,
-                                        item->data.test_and_set.old_value_size));
-                                I(ARAKOON_PROTOCOL_STRING_OPTION_LEN(item->data.test_and_set.new_value,
-                                        item->data.test_and_set.new_value_size));
-                        }; break;
                         default: {
                                 _arakoon_log_fatal("Invalid sequence type");
                                 abort();
@@ -998,15 +955,6 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
                                 WRITE_STRING(item->data.delete.key,
                                         item->data.delete.key_size);
                                 WRITE_UINT32(2);
-                        }; break;
-                        case ARAKOON_SEQUENCE_ITEM_TYPE_TEST_AND_SET: {
-                                WRITE_STRING_OPTION(item->data.test_and_set.new_value,
-                                        item->data.test_and_set.new_value_size);
-                                WRITE_STRING_OPTION(item->data.test_and_set.old_value,
-                                        item->data.test_and_set.old_value_size);
-                                WRITE_STRING(item->data.test_and_set.key,
-                                        item->data.test_and_set.key_size);
-                                WRITE_UINT32(3);
                         }; break;
                         default: {
                                 _arakoon_log_fatal("Invalid sequence type");

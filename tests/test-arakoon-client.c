@@ -148,8 +148,6 @@ int main(int argc, char **argv) {
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_set");
         rc = arakoon_sequence_add_set(seq, 3, "foz", 3, "bat");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_set");
-        rc = arakoon_sequence_add_test_and_set(seq, 3, "foz", 3, "bat", 3, "baz");
-        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_test_and_set");
         rc = arakoon_sequence_add_delete(seq, 3, "foz");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_delete");
         rc = arakoon_sequence(c, NULL, seq);

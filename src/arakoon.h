@@ -353,19 +353,6 @@ arakoon_rc arakoon_sequence_add_set(ArakoonSequence *sequence,
 arakoon_rc arakoon_sequence_add_delete(ArakoonSequence *sequence,
     const size_t key_size, const void * const key)
     ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
-/* Add a 'test_and_set' action to the sequence
- *
- * Key, old_value and new_value will be copied and released on
- * arakoon_sequence_free.
- *
- * 'old_value' and 'new_value' can be NULL to denote 'None', in which case the
- * according size value should be 0 as well.
- */
-arakoon_rc arakoon_sequence_add_test_and_set(ArakoonSequence *sequence,
-    const size_t key_size, const void * const key,
-    const size_t old_value_size, const void * const old_value,
-    const size_t new_value_size, const void * const new_value)
-    ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 
 /* Client call options
