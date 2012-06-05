@@ -26,6 +26,7 @@
 
 #include "arakoon.h"
 #include "arakoon-utils.h"
+#include "arakoon-assert.h"
 
 struct ArakoonClientCallOptions {
         arakoon_bool allow_dirty;
@@ -66,26 +67,38 @@ arakoon_bool arakoon_client_call_options_get_allow_dirty(
     const ArakoonClientCallOptions * const options) {
         FUNCTION_ENTER(arakoon_client_call_options_get_allow_dirty);
 
+        ASSERT_NON_NULL_RC(options);
+
         return options->allow_dirty;
 }
 
-void arakoon_client_call_options_set_allow_dirty(
+arakoon_rc arakoon_client_call_options_set_allow_dirty(
     ArakoonClientCallOptions * const options, arakoon_bool allow_dirty) {
         FUNCTION_ENTER(arakoon_client_call_options_set_allow_dirty);
 
+        ASSERT_NON_NULL_RC(options);
+
         options->allow_dirty = allow_dirty;
+
+        return ARAKOON_RC_SUCCESS;
 }
 
 int arakoon_client_call_options_get_timeout(
     const ArakoonClientCallOptions * const options) {
         FUNCTION_ENTER(arakoon_client_call_options_get_timeout);
 
+        ASSERT_NON_NULL_RC(options);
+
         return options->timeout;
 }
 
-void arakoon_client_call_options_set_timeout(
+arakoon_rc arakoon_client_call_options_set_timeout(
     ArakoonClientCallOptions * const options, int timeout) {
         FUNCTION_ENTER(arakoon_client_call_options_set_timeout);
 
+        ASSERT_NON_NULL_RC(options);
+
         options->timeout = timeout;
+
+        return ARAKOON_RC_SUCCESS;
 }

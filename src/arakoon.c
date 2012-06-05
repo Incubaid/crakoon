@@ -42,6 +42,7 @@
 #include "arakoon-client-call-options.h"
 #include "arakoon-value-list.h"
 #include "arakoon-key-value-list.h"
+#include "arakoon-assert.h"
 
 /* Sequences */
 typedef struct ArakoonSequenceItem ArakoonSequenceItem;
@@ -187,6 +188,11 @@ arakoon_rc arakoon_sequence_add_set(ArakoonSequence *sequence,
     const size_t key_size, const void * const key,
     const size_t value_size, const void * const value) {
         PRELUDE(arakoon_sequence_add_set);
+
+        ASSERT_NON_NULL_RC(sequence);
+        ASSERT_NON_NULL_RC(key);
+        ASSERT_NON_NULL_RC(value);
+
         OUVERTURE(ARAKOON_SEQUENCE_ITEM_TYPE_SET);
 
         COPY_STRING(set, key);
@@ -198,6 +204,10 @@ arakoon_rc arakoon_sequence_add_set(ArakoonSequence *sequence,
 arakoon_rc arakoon_sequence_add_delete(ArakoonSequence *sequence,
     const size_t key_size, const void * const key) {
         PRELUDE(arakoon_sequence_add_delete);
+
+        ASSERT_NON_NULL_RC(sequence);
+        ASSERT_NON_NULL_RC(key);
+
         OUVERTURE(ARAKOON_SEQUENCE_ITEM_TYPE_DELETE);
 
         COPY_STRING(delete, key);
@@ -210,6 +220,12 @@ arakoon_rc arakoon_sequence_add_test_and_set(ArakoonSequence *sequence,
     const size_t old_value_size, const void * const old_value,
     const size_t new_value_size, const void * const new_value) {
         PRELUDE(arakoon_sequence_add_test_and_set);
+
+        ASSERT_NON_NULL_RC(sequence);
+        ASSERT_NON_NULL_RC(key);
+        ASSERT_NON_NULL_RC(old_value);
+        ASSERT_NON_NULL_RC(new_value);
+
         OUVERTURE(ARAKOON_SEQUENCE_ITEM_TYPE_TEST_AND_SET);
 
         COPY_STRING(test_and_set, key);
@@ -242,6 +258,11 @@ arakoon_rc arakoon_hello(ArakoonCluster *cluster,
         int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         FUNCTION_ENTER(arakoon_hello);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(client_id);
+        ASSERT_NON_NULL_RC(cluster_id);
+        ASSERT_NON_NULL_RC(result);
 
         READ_OPTIONS;
         timeout = arakoon_client_call_options_get_timeout(options_);
@@ -294,6 +315,9 @@ arakoon_rc arakoon_who_master(ArakoonCluster *cluster,
 
         FUNCTION_ENTER(arakoon_who_master);
 
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(master);
+
         ARAKOON_CLUSTER_GET_MASTER(cluster, master_);
 
         READ_OPTIONS;
@@ -313,6 +337,9 @@ arakoon_rc arakoon_expect_progress_possible(ArakoonCluster *cluster,
         int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         FUNCTION_ENTER(arakoon_expect_progress_possible);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(result);
 
         READ_OPTIONS;
         timeout = arakoon_client_call_options_get_timeout(options_);
@@ -355,6 +382,10 @@ arakoon_rc arakoon_exists(ArakoonCluster * const cluster,
         timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_exists);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(key);
+        ASSERT_NON_NULL_RC(result);
 
         ARAKOON_CLUSTER_GET_MASTER(cluster, master);
 
@@ -400,6 +431,11 @@ arakoon_rc arakoon_get(ArakoonCluster *cluster,
         timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_get);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(key);
+        ASSERT_NON_NULL_RC(result_size);
+        ASSERT_NON_NULL_RC(result);
 
         ARAKOON_CLUSTER_GET_MASTER(cluster, master);
 
@@ -451,6 +487,10 @@ arakoon_rc arakoon_set(ArakoonCluster *cluster,
 
         FUNCTION_ENTER(arakoon_set);
 
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(key);
+        ASSERT_NON_NULL_RC(value);
+
         READ_OPTIONS;
         timeout = arakoon_client_call_options_get_timeout(options_);
 
@@ -496,6 +536,10 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
         timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_multi_get);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(keys);
+        ASSERT_NON_NULL_RC(result);
 
         ARAKOON_CLUSTER_GET_MASTER(cluster, master);
 
@@ -560,6 +604,9 @@ arakoon_rc arakoon_delete(ArakoonCluster *cluster,
 
         FUNCTION_ENTER(arakoon_delete);
 
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(key);
+
         READ_OPTIONS;
         timeout = arakoon_client_call_options_get_timeout(options_);
 
@@ -605,6 +652,9 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
         timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_range);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(result);
 
         ARAKOON_CLUSTER_GET_MASTER(cluster, master);
 
@@ -673,6 +723,9 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
 
         FUNCTION_ENTER(arakoon_range_entries);
 
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(result);
+
         ARAKOON_CLUSTER_GET_MASTER(cluster, master);
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN
@@ -737,6 +790,10 @@ arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
 
         FUNCTION_ENTER(arakoon_prefix);
 
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(begin_key);
+        ASSERT_NON_NULL_RC(result);
+
         ARAKOON_CLUSTER_GET_MASTER(cluster, master);
 
         len = ARAKOON_PROTOCOL_COMMAND_LEN
@@ -791,6 +848,11 @@ arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
 
         FUNCTION_ENTER(arakoon_test_and_set);
 
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(key);
+        ASSERT_NON_NULL_RC(result_size);
+        ASSERT_NON_NULL_RC(result);
+
         READ_OPTIONS;
         timeout = arakoon_client_call_options_get_timeout(options_);
 
@@ -842,6 +904,9 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
         int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         FUNCTION_ENTER(arakoon_sequence);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(sequence);
 
         READ_OPTIONS;
         timeout = arakoon_client_call_options_get_timeout(options_);

@@ -32,6 +32,7 @@
 #include "arakoon-cluster-node.h"
 #include "arakoon-client-call-options.h"
 #include "arakoon-nursery-routing.h"
+#include "arakoon-assert.h"
 
 struct ArakoonNursery {
         const ArakoonCluster *keeper;
@@ -42,6 +43,8 @@ ArakoonNursery * arakoon_nursery_new(const ArakoonCluster * const keeper) {
         ArakoonNursery *ret = NULL;
 
         FUNCTION_ENTER(arakoon_nursery_new);
+
+        ASSERT_NON_NULL(keeper);
 
         ret = arakoon_mem_new(1, ArakoonNursery);
         RETURN_NULL_IF_NULL(ret);
@@ -76,6 +79,8 @@ arakoon_rc arakoon_nursery_update_routing(ArakoonNursery *nursery,
         timeout = arakoon_client_call_options_get_timeout(options_);
 
         FUNCTION_ENTER(arakoon_nursery_update_routing);
+
+        ASSERT_NON_NULL_RC(nursery);
 
         if(nursery->routing != NULL) {
                 _arakoon_nursery_routing_free(nursery->routing);
@@ -129,6 +134,11 @@ arakoon_rc arakoon_nursery_get(ArakoonNursery *nursery,
 
         FUNCTION_ENTER(arakoon_nursery_get);
 
+        ASSERT_NON_NULL_RC(nursery);
+        ASSERT_NON_NULL_RC(key);
+        ASSERT_NON_NULL_RC(result_size);
+        ASSERT_NON_NULL_RC(result);
+
         cluster = _arakoon_nursery_routing_lookup(nursery->routing, key_size, key);
         if(cluster == NULL) {
                 return ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG;
@@ -145,6 +155,10 @@ arakoon_rc arakoon_nursery_set(ArakoonNursery *nursery,
 
         FUNCTION_ENTER(arakoon_nursery_set);
 
+        ASSERT_NON_NULL_RC(nursery);
+        ASSERT_NON_NULL_RC(key);
+        ASSERT_NON_NULL_RC(value);
+
         cluster = _arakoon_nursery_routing_lookup(nursery->routing, key_size, key);
         if(cluster == NULL) {
                 return ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG;
@@ -160,6 +174,9 @@ arakoon_rc arakoon_nursery_delete(ArakoonNursery *nursery,
 
         FUNCTION_ENTER(arakoon_nursery_delete);
 
+        ASSERT_NON_NULL_RC(nursery);
+        ASSERT_NON_NULL_RC(key);
+
         cluster = _arakoon_nursery_routing_lookup(nursery->routing, key_size, key);
         if(cluster == NULL) {
                 return ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG;
@@ -174,6 +191,9 @@ arakoon_rc arakoon_nursery_reconnect_master(const ArakoonNursery *nursery,
         ArakoonCluster *cluster = NULL;
 
         FUNCTION_ENTER(arakoon_nursery_reconnect_master);
+
+        ASSERT_NON_NULL_RC(nursery);
+        ASSERT_NON_NULL_RC(key);
 
         cluster = _arakoon_nursery_routing_lookup(nursery->routing, key_size, key);
         if(cluster == NULL) {
