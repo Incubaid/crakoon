@@ -26,6 +26,7 @@
 
 #include "arakoon-value-list.h"
 #include "arakoon-utils.h"
+#include "arakoon-assert.h"
 
 struct ArakoonValueListItem {
         ArakoonValueListItem *next;
@@ -119,11 +120,16 @@ arakoon_rc arakoon_value_list_add(ArakoonValueList *list,
     const size_t value_size, const void * const value) {
         FUNCTION_ENTER(arakoon_value_list_add);
 
+        ASSERT_NON_NULL_RC(list);
+        ASSERT_NON_NULL_RC(value);
+
         return arakoon_value_list_append(list, value_size, value);
 }
 
 ssize_t arakoon_value_list_size(const ArakoonValueList * const list) {
         FUNCTION_ENTER(arakoon_value_list_size);
+
+        ASSERT_NON_NULL_RC(list);
 
         return list->size;
 }
@@ -166,6 +172,8 @@ ArakoonValueListIter * arakoon_value_list_create_iter(
 
         FUNCTION_ENTER(arakoon_value_list_create_iter);
 
+        ASSERT_NON_NULL(list);
+
         iter = arakoon_mem_new(1, ArakoonValueListIter);
         RETURN_NULL_IF_NULL(iter);
 
@@ -190,6 +198,10 @@ arakoon_rc arakoon_value_list_iter_next(ArakoonValueListIter * const iter,
     size_t * const value_size, const void ** const value) {
         FUNCTION_ENTER(arakoon_value_list_iter_next);
 
+        ASSERT_NON_NULL_RC(iter);
+        ASSERT_NON_NULL_RC(value_size);
+        ASSERT_NON_NULL_RC(value);
+
         if(iter->current != NULL) {
                 *value_size = iter->current->value_size;
                 *value = iter->current->value;
@@ -206,6 +218,8 @@ arakoon_rc arakoon_value_list_iter_next(ArakoonValueListIter * const iter,
 
 arakoon_rc arakoon_value_list_iter_reset(ArakoonValueListIter * const iter) {
         FUNCTION_ENTER(arakoon_value_list_iter_reset);
+
+        ASSERT_NON_NULL_RC(iter);
 
         iter->current = iter->list->first;
 

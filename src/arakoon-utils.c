@@ -28,6 +28,7 @@
 
 #include "arakoon.h"
 #include "arakoon-utils.h"
+#include "arakoon-assert.h"
 
 const char * arakoon_strerror(arakoon_rc n) {
         if(ARAKOON_RC_IS_ERRNO(n)) {
@@ -175,6 +176,8 @@ ArakoonMemoryHooks memory_hooks = {
 arakoon_rc arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks) {
         FUNCTION_ENTER(arakoon_memory_set_hooks);
 
+        ASSERT_NON_NULL_RC(hooks);
+
         memory_hooks.malloc = hooks->malloc;
         memory_hooks.free = hooks->free;
         memory_hooks.realloc = hooks->realloc;
@@ -227,6 +230,8 @@ char * arakoon_utils_make_string(void *data, size_t length) {
         char *s = NULL;
 
         FUNCTION_ENTER(arakoon_utils_make_string);
+
+        ASSERT_NON_NULL(data);
 
         s = arakoon_mem_realloc(data, length + 1);
         if(s == NULL) {

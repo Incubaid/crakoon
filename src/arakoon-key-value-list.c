@@ -26,6 +26,7 @@
 
 #include "arakoon-key-value-list.h"
 #include "arakoon-utils.h"
+#include "arakoon-assert.h"
 
 typedef struct ArakoonKeyValueListItem ArakoonKeyValueListItem;
 struct ArakoonKeyValueListItem {
@@ -95,6 +96,8 @@ arakoon_rc _arakoon_key_value_list_prepend(ArakoonKeyValueList *list,
 ssize_t arakoon_key_value_list_size(const ArakoonKeyValueList * const list) {
         FUNCTION_ENTER(arakoon_key_value_list_size);
 
+        ASSERT_NON_NULL_RC(list);
+
         return list->size;
 }
 
@@ -139,6 +142,8 @@ ArakoonKeyValueListIter * arakoon_key_value_list_create_iter(
 
         FUNCTION_ENTER(arakoon_key_value_list_create_iter);
 
+        ASSERT_NON_NULL(list);
+
         iter = arakoon_mem_new(1, ArakoonKeyValueListIter);
         RETURN_NULL_IF_NULL(iter);
 
@@ -164,6 +169,12 @@ arakoon_rc arakoon_key_value_list_iter_next(ArakoonKeyValueListIter * const iter
     size_t * const value_size, const void ** const value) {
         FUNCTION_ENTER(arakoon_key_value_list_iter_next);
 
+        ASSERT_NON_NULL_RC(iter);
+        ASSERT_NON_NULL_RC(key_size);
+        ASSERT_NON_NULL_RC(key);
+        ASSERT_NON_NULL_RC(value_size);
+        ASSERT_NON_NULL_RC(value);
+
         if(iter->current != NULL) {
                 *key_size = iter->current->key_size;
                 *key = iter->current->key;
@@ -185,6 +196,8 @@ arakoon_rc arakoon_key_value_list_iter_next(ArakoonKeyValueListIter * const iter
 arakoon_rc arakoon_key_value_list_iter_reset(
     ArakoonKeyValueListIter * const iter) {
         FUNCTION_ENTER(arakoon_key_value_list_iter_reset);
+
+        ASSERT_NON_NULL_RC(iter);
 
         iter->current = iter->list->first;
 

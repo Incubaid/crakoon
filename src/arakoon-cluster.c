@@ -26,6 +26,7 @@
 
 #include "arakoon-cluster.h"
 #include "arakoon-utils.h"
+#include "arakoon-assert.h"
 
 struct ArakoonCluster {
         char * name;
@@ -39,6 +40,8 @@ ArakoonCluster * arakoon_cluster_new(const char * const name) {
         size_t len = 0;
 
         FUNCTION_ENTER(arakoon_cluster_new);
+
+        ASSERT_NON_NULL(name);
 
         ret = arakoon_mem_new(1, ArakoonCluster);
         RETURN_NULL_IF_NULL(ret);
@@ -97,6 +100,8 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
         int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
         FUNCTION_ENTER(arakoon_cluster_connect_master);
+
+        ASSERT_NON_NULL_RC(cluster);
 
         _arakoon_log_debug("Looking up master node");
 
@@ -196,6 +201,8 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
 const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster) {
         FUNCTION_ENTER(arakoon_cluster_get_name);
 
+        ASSERT_NON_NULL(cluster);
+
         return cluster->name;
 }
 
@@ -204,6 +211,10 @@ arakoon_rc arakoon_cluster_add_node(ArakoonCluster *cluster,
         ArakoonClusterNode *node = NULL;
 
         FUNCTION_ENTER(arakoon_cluster_add_node);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(name);
+        ASSERT_NON_NULL_RC(address);
 
         _arakoon_log_debug("Adding node %s to cluster %s", name, cluster->name);
 
@@ -223,6 +234,11 @@ arakoon_rc arakoon_cluster_add_node_tcp(ArakoonCluster *cluster,
         int rc = 0;
 
         FUNCTION_ENTER(arakoon_cluster_add_node_tcp);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(name);
+        ASSERT_NON_NULL_RC(host);
+        ASSERT_NON_NULL_RC(service);
 
         _arakoon_log_debug("Looking up node %s at %s:%s", name, host, service);
 
@@ -247,6 +263,8 @@ arakoon_rc arakoon_cluster_add_node_tcp(ArakoonCluster *cluster,
 
 ArakoonClusterNode * _arakoon_cluster_get_master(
     const ArakoonCluster * const cluster) {
+        ASSERT_NON_NULL(cluster);
+
         if(cluster->master == NULL) {
                 return NULL;
         }
