@@ -27,7 +27,7 @@ arakoon_sequence_new
 arakoon_sequence_free
 arakoon_sequence_add_set
 arakoon_sequence_add_delete
-arakoon_sequence_add_test_and_set
+arakoon_sequence_add_assert
 
 arakoon_client_call_options_new
 arakoon_client_call_options_free
@@ -38,6 +38,7 @@ arakoon_client_call_options_set_timeout
 
 arakoon_cluster_new
 arakoon_cluster_free
+arakoon_cluster_get_last_error
 arakoon_cluster_connect_master
 arakoon_cluster_get_name
 arakoon_cluster_add_node
