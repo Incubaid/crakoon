@@ -49,7 +49,8 @@ typedef struct ArakoonSequenceItem ArakoonSequenceItem;
 struct ArakoonSequenceItem {
         enum {
                 ARAKOON_SEQUENCE_ITEM_TYPE_SET,
-                ARAKOON_SEQUENCE_ITEM_TYPE_DELETE
+                ARAKOON_SEQUENCE_ITEM_TYPE_DELETE,
+                ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT
         } type;
 
         union {
@@ -64,6 +65,13 @@ struct ArakoonSequenceItem {
                         size_t key_size;
                         void * key;
                 } delete;
+
+                struct {
+                        size_t key_size;
+                        void * key;
+                        size_t value_size;
+                        void * value;
+                } assert;
         } data;
 
         ArakoonSequenceItem * next;
@@ -79,6 +87,10 @@ static void arakoon_sequence_item_free(ArakoonSequenceItem *item) {
                 }; break;
                 case ARAKOON_SEQUENCE_ITEM_TYPE_DELETE: {
                         arakoon_mem_free(item->data.delete.key);
+                }; break;
+                case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT: {
+                        arakoon_mem_free(item->data.assert.key);
+                        arakoon_mem_free(item->data.assert.value);
                 }; break;
                 default: {
                         _arakoon_log_fatal("Unknown sequence item type");
@@ -199,6 +211,23 @@ arakoon_rc arakoon_sequence_add_delete(ArakoonSequence *sequence,
 
         POSTLUDIUM(arakoon_sequence_add_delete);
 }
+
+arakoon_rc arakoon_sequence_add_assert(ArakoonSequence *sequence,
+    const size_t key_size, const void * const key,
+    const size_t value_size, const void * const value) {
+        PRELUDE(arakoon_sequence_add_assert);
+
+        ASSERT_NON_NULL_RC(sequence);
+        ASSERT_NON_NULL_RC(key);
+
+        OUVERTURE(ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT);
+
+        COPY_STRING(assert, key);
+        COPY_STRING_OPTION(assert, value);
+
+        POSTLUDIUM(arakoon_sequence_add_assert);
+}
+
 
 #undef PRELUDE
 #undef OUVERTURE
@@ -895,6 +924,11 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
                         case ARAKOON_SEQUENCE_ITEM_TYPE_DELETE: {
                                 I(ARAKOON_PROTOCOL_STRING_LEN(item->data.delete.key_size));
                         }; break;
+                        case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT: {
+                                I(ARAKOON_PROTOCOL_STRING_LEN(item->data.assert.key_size));
+                                I(ARAKOON_PROTOCOL_STRING_OPTION_LEN(
+                                    item->data.assert.value, item->data.assert.value_size));
+                        }; break;
                         default: {
                                 _arakoon_log_fatal("Invalid sequence type");
                                 abort();
@@ -955,6 +989,13 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
                                 WRITE_STRING(item->data.delete.key,
                                         item->data.delete.key_size);
                                 WRITE_UINT32(2);
+                        }; break;
+                        case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT: {
+                                WRITE_STRING_OPTION(item->data.assert.value,
+                                        item->data.assert.value_size);
+                                WRITE_STRING(item->data.assert.key,
+                                        item->data.assert.key_size);
+                                WRITE_UINT32(8);
                         }; break;
                         default: {
                                 _arakoon_log_fatal("Invalid sequence type");

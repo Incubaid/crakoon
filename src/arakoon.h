@@ -355,6 +355,14 @@ arakoon_rc arakoon_sequence_add_set(ArakoonSequence *sequence,
 arakoon_rc arakoon_sequence_add_delete(ArakoonSequence *sequence,
     const size_t key_size, const void * const key)
     ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Add an 'assert' action to the sequence
+ *
+ * Key and value will be copied and released on arakoon_sequence_free.
+ */
+arakoon_rc arakoon_sequence_add_assert(ArakoonSequence *sequence,
+    const size_t key_size, const void * const key,
+    const size_t value_size, const void * const value)
+    ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 
 /* Client call options

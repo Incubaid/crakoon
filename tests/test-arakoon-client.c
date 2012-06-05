@@ -148,10 +148,24 @@ int main(int argc, char **argv) {
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_set");
         rc = arakoon_sequence_add_set(seq, 3, "foz", 3, "bat");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_set");
+        rc = arakoon_sequence_add_assert(seq, 3, "foo", 3, "baz");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_assert");
         rc = arakoon_sequence_add_delete(seq, 3, "foz");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_delete");
+        rc = arakoon_sequence_add_assert(seq, 3, "foz", 0, NULL);
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_assert");
         rc = arakoon_sequence(c, NULL, seq);
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence");
+        arakoon_sequence_free(seq);
+
+        seq = arakoon_sequence_new();
+        rc = arakoon_sequence_add_assert(seq, 4, "fail", 1, "a");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_assert");
+        rc = arakoon_sequence(c, NULL, seq);
+        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
+                fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
+                abort();
+        }
         arakoon_sequence_free(seq);
 
         arakoon_client_call_options_free(options);
