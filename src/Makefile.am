@@ -20,7 +20,7 @@ libarakoon_1_0_includedir=$(includedir)/arakoon-1.0/arakoon
 libarakoon_1_0_include_HEADERS = arakoon.h arakoon-nursery.h
 libarakoon_1_0_la_LIBADD = -lrt
 
-AM_CPPFLAGS = $(CRAKOON_DEBUG_FLAGS)
+AM_CPPFLAGS = $(CRAKOON_DEBUG_FLAGS) $(CRAKOON_ASSERT_FLAGS)
 
 export_symbols = $(LIBTOOL_EXPORT_OPTIONS)
 

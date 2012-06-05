@@ -172,6 +172,7 @@ PKG_CHECK_MODULES([CHECK], [check >= 0.9.4])
 LIBTOOL_EXPORT_OPTIONS='-export-symbols-regex "^arakoon_.*"'
 AC_SUBST(LIBTOOL_EXPORT_OPTIONS)
 
+AC_MSG_CHECKING([whether to enable debug mode])
 AC_ARG_ENABLE(debug,
               AC_HELP_STRING([--enable-debug=@<:@no/yes@:>@],
                              [turn on debugging @<:@default=crakoon_debug_default@:>@]),,
@@ -190,6 +191,28 @@ else
   CRAKOON_DEBUG_FLAGS=""
 fi
 AC_SUBST(CRAKOON_DEBUG_FLAGS)
+AC_MSG_RESULT([$enable_debug])
+
+if test "x$enable_debug" = "xyes"; then
+  crakoon_assert_default=abort
+else
+  crakoon_assert_default=log
+fi
+
+AC_MSG_CHECKING([which asserts to enable])
+AC_ARG_ENABLE(asserts,
+              AC_HELP_STRING([--enable-asserts=@<:@no/yes/log/abort@:>@],
+                             [enable asserts @<:@default=$crakoon_assert_default@:>@]),,
+              enable_asserts=$crakoon_assert_default)
+
+case "x$enable_asserts" in
+  xno) AC_SUBST(CRAKOON_ASSERT_FLAGS, []) ;;
+  xyes) AC_SUBST(CRAKOON_ASSERT_FLAGS, [-DARAKOON_ASSERT=0]) ;;
+  xlog) AC_SUBST(CRAKOON_ASSERT_FLAGS, [-DARAKOON_ASSERT=1]) ;;
+  xabort) AC_SUBST(CRAKOON_ASSERT_FLAGS, [-DARAKOON_ASSERT=2]) ;;
+  *) AC_MSG_ERROR([Invalid setting for --enable-asserts. Use "no", "yes", "log" or "abort"]) ;;
+esac
+AC_MSG_RESULT([$enable_asserts])
 
 LT_PREREQ([2.2])
 LT_INIT([disable-static])
@@ -276,6 +299,7 @@ CFLAGS=`echo $CFLAGS | sed 's/-Werror//g'`
 AC_HEADER_STDC
 AC_CHECK_HEADERS([stdlib.h netdb.h sys/socket.h])
 AC_CHECK_HEADERS([stdint.h string.h unistd.h])
+AC_CHECK_HEADERS([errno.h])
 
 AC_CHECK_LIB([rt], [clock_gettime])
 
