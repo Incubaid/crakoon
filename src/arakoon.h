@@ -204,7 +204,7 @@ typedef struct {
 } ArakoonMemoryHooks;
 
 /* Register memory-management functions to be used by Crakoon */
-void arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks)
+arakoon_rc arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks)
     ARAKOON_GNUC_NONNULL;
 /* Retrieve an ArakoonMemoryHooks table containing wrappers around the system
  * malloc(3) and realloc(3) which abort() on allocation failure. Pass this to
@@ -255,7 +255,7 @@ arakoon_rc arakoon_value_list_add(ArakoonValueList *list,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_NONNULL2(1, 3);
 /* Retrieve the number of items in the list */
-size_t arakoon_value_list_size(const ArakoonValueList * const list)
+ssize_t arakoon_value_list_size(const ArakoonValueList * const list)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
 /* Free a value list
  *
@@ -275,11 +275,11 @@ void arakoon_value_list_iter_free(ArakoonValueListIter * const iter);
  *
  * value will point to NULL when the last item was reached.
  */
-void arakoon_value_list_iter_next(ArakoonValueListIter * const iter,
+arakoon_rc arakoon_value_list_iter_next(ArakoonValueListIter * const iter,
     size_t * const value_size, const void ** const value)
     ARAKOON_GNUC_NONNULL;
 /* Reset the list cursor to the first entry */
-void arakoon_value_list_iter_reset(ArakoonValueListIter * const iter)
+arakoon_rc arakoon_value_list_iter_reset(ArakoonValueListIter * const iter)
     ARAKOON_GNUC_NONNULL;
 
 /* Helper to map over an ArakoonValueList
@@ -304,7 +304,7 @@ void arakoon_value_list_iter_reset(ArakoonValueListIter * const iter)
  * Same as ValueList, but with pairs of values, sort-of
  */
 typedef struct ArakoonKeyValueList ArakoonKeyValueList;
-size_t arakoon_key_value_list_size(const ArakoonKeyValueList * const list)
+ssize_t arakoon_key_value_list_size(const ArakoonKeyValueList * const list)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
 void arakoon_key_value_list_free(ArakoonKeyValueList * const list);
 
@@ -314,11 +314,11 @@ ArakoonKeyValueListIter * arakoon_key_value_list_create_iter(
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT
     ARAKOON_GNUC_MALLOC;
 void arakoon_key_value_list_iter_free(ArakoonKeyValueListIter * const iter);
-void arakoon_key_value_list_iter_next(ArakoonKeyValueListIter * const iter,
+arakoon_rc arakoon_key_value_list_iter_next(ArakoonKeyValueListIter * const iter,
     size_t * const key_size, const void ** const key,
     size_t * const value_size, const void ** const value)
     ARAKOON_GNUC_NONNULL;
-void arakoon_key_value_list_iter_reset(ArakoonKeyValueListIter * const iter)
+arakoon_rc arakoon_key_value_list_iter_reset(ArakoonKeyValueListIter * const iter)
     ARAKOON_GNUC_NONNULL;
 
 #define FOR_ARAKOON_KEY_VALUE_ITER(i, kl, k, vl, v)        \
@@ -406,7 +406,7 @@ arakoon_bool arakoon_client_call_options_get_allow_dirty(
     const ArakoonClientCallOptions * const options)
     ARAKOON_GNUC_NONNULL;
 /* Set the 'allow_dirty' flag in an ArakoonClientCallOptions structure */
-void arakoon_client_call_options_set_allow_dirty(
+arakoon_rc arakoon_client_call_options_set_allow_dirty(
     ArakoonClientCallOptions * const options, arakoon_bool allow_dirty)
     ARAKOON_GNUC_NONNULL;
 
@@ -423,7 +423,7 @@ int arakoon_client_call_options_get_timeout(
  * Use ARAKOON_CLIENT_CALL_OPTIONS_INFINITE_TIMEOUT to set an infinite (or, no)
  * timeout.
  */
-void arakoon_client_call_options_set_timeout(
+arakoon_rc arakoon_client_call_options_set_timeout(
     ArakoonClientCallOptions * const options, int timeout)
     ARAKOON_GNUC_NONNULL1(1);
 

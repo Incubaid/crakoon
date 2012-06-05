@@ -38,7 +38,7 @@ struct ArakoonKeyValueListItem {
 };
 
 struct ArakoonKeyValueList {
-        size_t size;
+        ssize_t size;
         ArakoonKeyValueListItem *first;
 };
 
@@ -92,7 +92,7 @@ arakoon_rc _arakoon_key_value_list_prepend(ArakoonKeyValueList *list,
         return ARAKOON_RC_SUCCESS;
 }
 
-size_t arakoon_key_value_list_size(const ArakoonKeyValueList * const list) {
+ssize_t arakoon_key_value_list_size(const ArakoonKeyValueList * const list) {
         FUNCTION_ENTER(arakoon_key_value_list_size);
 
         return list->size;
@@ -159,7 +159,7 @@ void arakoon_key_value_list_iter_free(ArakoonKeyValueListIter * const iter) {
         arakoon_mem_free(iter);
 }
 
-void arakoon_key_value_list_iter_next(ArakoonKeyValueListIter * const iter,
+arakoon_rc arakoon_key_value_list_iter_next(ArakoonKeyValueListIter * const iter,
     size_t * const key_size, const void ** const key,
     size_t * const value_size, const void ** const value) {
         FUNCTION_ENTER(arakoon_key_value_list_iter_next);
@@ -178,10 +178,15 @@ void arakoon_key_value_list_iter_next(ArakoonKeyValueListIter * const iter,
                 *value_size = 0;
                 *value = NULL;
         }
+
+        return ARAKOON_RC_SUCCESS;
 }
 
-void arakoon_key_value_list_iter_reset(ArakoonKeyValueListIter * const iter) {
+arakoon_rc arakoon_key_value_list_iter_reset(
+    ArakoonKeyValueListIter * const iter) {
         FUNCTION_ENTER(arakoon_key_value_list_iter_reset);
 
         iter->current = iter->list->first;
+
+        return ARAKOON_RC_SUCCESS;
 }

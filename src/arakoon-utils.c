@@ -172,12 +172,14 @@ ArakoonMemoryHooks memory_hooks = {
         realloc
 };
 
-void arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks) {
+arakoon_rc arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks) {
         FUNCTION_ENTER(arakoon_memory_set_hooks);
 
         memory_hooks.malloc = hooks->malloc;
         memory_hooks.free = hooks->free;
         memory_hooks.realloc = hooks->realloc;
+
+        return ARAKOON_RC_SUCCESS;
 }
 
 static void * arakoon_memory_abort_malloc(size_t s)
