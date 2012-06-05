@@ -1,7 +1,7 @@
 /*
  * This file is part of Arakoon, a distributed key-value store.
  *
- * Copyright (C) 2010 Incubaid BVBA
+ * Copyright (C) 2010, 2012 Incubaid BVBA
  *
  * Licensees holding a valid Incubaid license may use this file in
  * accordance with Incubaid's Arakoon commercial license agreement. For
@@ -35,7 +35,7 @@ const char * arakoon_strerror(arakoon_rc n) {
                 return strerror(n);
         }
 
-        switch(n) {
+        switch(ARAKOON_RC_AS_ARAKOONRETURNCODE(n)) {
                 case ARAKOON_RC_SUCCESS:
                         return "Success";
                         break;
@@ -56,6 +56,12 @@ const char * arakoon_strerror(arakoon_rc n) {
                         break;
                 case ARAKOON_RC_WRONG_CLUSTER:
                         return "Wrong cluster";
+                        break;
+                case ARAKOON_RC_ASSERTION_FAILED:
+                        return "Assertion failed";
+                        break;
+                case ARAKOON_RC_READ_ONLY:
+                        return "Read only";
                         break;
                 case ARAKOON_RC_NURSERY_RANGE_ERROR:
                         return "Wrong range in nursery";
@@ -86,10 +92,9 @@ const char * arakoon_strerror(arakoon_rc n) {
                 case ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG:
                         return "Client contains invalid nursery routing table";
                         break;
-
-                default:
-                        return "Unknown return code";
         }
+
+        return "Unknown return code";
 }
 
 /* Logging */

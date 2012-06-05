@@ -1,7 +1,7 @@
 /*
  * This file is part of Arakoon, a distributed key-value store.
  *
- * Copyright (C) 2010 Incubaid BVBA
+ * Copyright (C) 2010, 2012 Incubaid BVBA
  *
  * Licensees holding a valid Incubaid license may use this file in
  * accordance with Incubaid's Arakoon commercial license agreement. For
@@ -145,6 +145,8 @@ typedef enum {
     ARAKOON_RC_NOT_MASTER = 4, /* Node is not the master */
     ARAKOON_RC_NOT_FOUND = 5, /* Not found */
     ARAKOON_RC_WRONG_CLUSTER = 6, /* An invalid cluster name was specified */
+    ARAKOON_RC_ASSERTION_FAILED = 7, /* An assertion failed */
+    ARAKOON_RC_READ_ONLY = 8, /* Node is in read-only mode */
     ARAKOON_RC_NURSERY_RANGE_ERROR = 9, /* Nursery range error */
     ARAKOON_RC_UNKNOWN_FAILURE = 0xff, /* An unknown failure occurred */
 
