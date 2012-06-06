@@ -1,4 +1,4 @@
 #!/bin/sh -xe
 
-autoreconf -f
+autoreconf -fiv
 ./configure "$@"

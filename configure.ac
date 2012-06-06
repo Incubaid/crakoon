@@ -2,6 +2,8 @@
 
 AC_PREREQ([2.62])
 
+AC_CONFIG_MACRO_DIR([m4])
+
 m4_define(crakoon_configure_ac)
 
 # Making releases:
