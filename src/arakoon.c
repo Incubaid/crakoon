@@ -33,6 +33,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "arakoon.h"
 #include "arakoon-utils.h"
@@ -236,32 +237,27 @@ arakoon_rc arakoon_sequence_add_assert(ArakoonSequence *sequence,
 #undef COPY_STRING
 #undef COPY_STRING_OPTION
 
-#define HANDLE_ERROR(rc, master, cluster, timeout)                        \
-        STMT_START                                                        \
-        if(rc != ARAKOON_RC_SUCCESS) {                                    \
-                void *_err_msg = NULL;                                    \
-                size_t _err_len = 0;                                      \
-                char *_err_str = NULL;                                    \
-                arakoon_rc _err_rc = 0;                                   \
-                _arakoon_log_debug("Error detected, reading message");    \
-                ARAKOON_PROTOCOL_READ_STRING(                             \
-                    master, _err_msg, _err_len, _err_rc, timeout);        \
-                if(_err_rc != ARAKOON_RC_SUCCESS) {                       \
-                        _arakoon_log_fatal(                               \
-                            "Failed to read error message: %s",           \
-                            arakoon_strerror(_err_rc));                   \
-                        break;                                            \
-                }                                                         \
-                _err_str = arakoon_utils_make_string(_err_msg, _err_len); \
-                if(_err_str == NULL) {                                    \
-                        _arakoon_log_fatal(                               \
-                            "Failed to allocate error message");          \
-                        return -ENOMEM;                                   \
-                }                                                         \
-                _arakoon_log_warning(                                     \
-                    "Error: %s - %s", arakoon_strerror(rc), _err_str);    \
-                _arakoon_cluster_set_last_error(cluster, _err_str);       \
-        }                                                                 \
+#define HANDLE_ERROR(rc, master, cluster, timeout)                            \
+        STMT_START                                                            \
+        if(rc != ARAKOON_RC_SUCCESS) {                                        \
+                void *_err_msg = NULL;                                        \
+                size_t _err_len = 0;                                          \
+                arakoon_rc _err_rc = 0;                                       \
+                _arakoon_log_debug("Error detected, reading message");        \
+                ARAKOON_PROTOCOL_READ_STRING(                                 \
+                    master, _err_msg, _err_len, _err_rc, timeout);            \
+                if(_err_rc != ARAKOON_RC_SUCCESS) {                           \
+                        _arakoon_log_fatal(                                   \
+                            "Failed to read error message: %s",               \
+                            arakoon_strerror(_err_rc));                       \
+                        break;                                                \
+                }                                                             \
+                _arakoon_log_warning(                                         \
+                    "%s: %.*s", arakoon_strerror(rc),                         \
+                    _err_len < INT_MAX ? (int) _err_len : INT_MAX,            \
+                    (char *) _err_msg);                                       \
+                _arakoon_cluster_set_last_error(cluster, _err_len, _err_msg); \
+        }                                                                     \
         STMT_END
 
 /* Client operations */

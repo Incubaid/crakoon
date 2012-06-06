@@ -24,12 +24,15 @@
 #ifndef __ARAKOON_CLUSTER_H__
 #define __ARAKOON_CLUSTER_H__
 
+#include <unistd.h>
+
 #include "arakoon.h"
 #include "arakoon-cluster-node.h"
 
 ARAKOON_BEGIN_DECLS
 
-ArakoonClusterNode * _arakoon_cluster_get_master(const ArakoonCluster * const cluster);
+ArakoonClusterNode * _arakoon_cluster_get_master(
+    const ArakoonCluster * const cluster);
 
 #define ARAKOON_CLUSTER_GET_MASTER(c, m)                \
         STMT_START                                      \
@@ -41,7 +44,7 @@ ArakoonClusterNode * _arakoon_cluster_get_master(const ArakoonCluster * const cl
 
 void _arakoon_cluster_reset_last_error(ArakoonCluster * const cluster);
 void _arakoon_cluster_set_last_error(
-    ArakoonCluster * const cluster, char * const message);
+    ArakoonCluster * const cluster, size_t len, void * const message);
 
 ARAKOON_END_DECLS
 

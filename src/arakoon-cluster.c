@@ -31,7 +31,10 @@
 struct ArakoonCluster {
         char * name;
 
-        char * last_error;
+        struct {
+                size_t len;
+                void *data;
+        } last_error;
 
         ArakoonClusterNode * nodes;
         ArakoonClusterNode * master;
@@ -58,7 +61,8 @@ ArakoonCluster * arakoon_cluster_new(const char * const name) {
 
         strncpy(ret->name, name, len);
 
-        ret->last_error = NULL;
+        ret->last_error.len = 0;
+        ret->last_error.data = NULL;
         ret->nodes = NULL;
         ret->master = NULL;
 
@@ -83,7 +87,7 @@ void arakoon_cluster_free(ArakoonCluster *cluster) {
         RETURN_IF_NULL(cluster);
 
         arakoon_mem_free(cluster->name);
-        arakoon_mem_free(cluster->last_error);
+        arakoon_mem_free(cluster->last_error.data);
 
         node = cluster->nodes;
         while(node != NULL) {
@@ -210,20 +214,26 @@ const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster) {
         return cluster->name;
 }
 
-const char * arakoon_cluster_get_last_error(
-    const ArakoonCluster * const cluster) {
+arakoon_rc arakoon_cluster_get_last_error(
+    const ArakoonCluster * const cluster, size_t *len, const void **data) {
         FUNCTION_ENTER(arakoon_cluster_get_last_error);
 
-        ASSERT_NON_NULL(cluster);
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(len);
+        ASSERT_NON_NULL_RC(data);
 
-        return cluster->last_error;
+        *len = cluster->last_error.len;
+        *data = cluster->last_error.data;
+
+        return ARAKOON_RC_SUCCESS;
 }
 
 void _arakoon_cluster_set_last_error(ArakoonCluster * const cluster,
-    char * const message) {
+    size_t len, void *data) {
         FUNCTION_ENTER(_arakoon_cluster_set_last_error);
 
-        cluster->last_error = message;
+        cluster->last_error.len = len;
+        cluster->last_error.data = data;
 }
 
 arakoon_rc arakoon_cluster_add_node(ArakoonCluster *cluster,
@@ -298,6 +308,8 @@ ArakoonClusterNode * _arakoon_cluster_get_master(
 void _arakoon_cluster_reset_last_error(ArakoonCluster * const cluster) {
         FUNCTION_ENTER(_arakooon_cluster_reset_error);
 
-        arakoon_mem_free(cluster->last_error);
-        cluster->last_error = NULL;
+        cluster->last_error.len = 0;
+
+        arakoon_mem_free(cluster->last_error.data);
+        cluster->last_error.data = NULL;
 }

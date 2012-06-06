@@ -455,8 +455,8 @@ const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster)
  * call using the cluster, or whenever the cluster is free'd. As such you
  * should create your own copy of the string for further usage, if required.
  */
-const char * arakoon_cluster_get_last_error(
-    const ArakoonCluster * const cluster)
+arakoon_rc arakoon_cluster_get_last_error(
+    const ArakoonCluster * const cluster, size_t *len, const void ** data)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
 
 /* Add a node to the cluster
