@@ -24,6 +24,8 @@
 #ifndef __ARAKOON_NETWORKING_H__
 #define __ARAKOON_NETWORKING_H__
 
+#include <netdb.h>
+
 #include "arakoon.h"
 
 ARAKOON_BEGIN_DECLS
@@ -33,6 +35,9 @@ arakoon_rc _arakoon_networking_poll_write(int fd, const void *data,
 
 arakoon_rc _arakoon_networking_poll_read(int fd, void *buf, size_t count,
     int *timeout) ARAKOON_GNUC_NONNULL2(2, 4);
+
+arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
+    int *timeout) ARAKOON_GNUC_NONNULL2(1, 2);
 
 ARAKOON_END_DECLS
 

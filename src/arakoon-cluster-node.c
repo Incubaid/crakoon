@@ -1,7 +1,7 @@
 /*
  * This file is part of Arakoon, a distributed key-value store.
  *
- * Copyright (C) 2010 Incubaid BVBA
+ * Copyright (C) 2010, 2012 Incubaid BVBA
  *
  * Licensees holding a valid Incubaid license may use this file in
  * accordance with Incubaid's Arakoon commercial license agreement. For
@@ -109,19 +109,12 @@ arakoon_rc _arakoon_cluster_node_connect(ArakoonClusterNode *node,
         }
 
         for(rp = node->address; rp != NULL; rp = rp->ai_next) {
-                node->fd = socket(rp->ai_family, rp->ai_socktype,
-                        rp->ai_protocol);
+                rc = _arakoon_networking_connect(rp, &(node->fd), timeout);
 
-                if(node->fd == -1) {
-                        continue;
-                }
-
-                if(connect(node->fd, rp->ai_addr, rp->ai_addrlen) != -1) {
+                if(rc == ARAKOON_RC_SUCCESS) {
                         break;
                 }
 
-                shutdown(node->fd, SHUT_RDWR);
-                close(node->fd);
                 node->fd = -1;
         }
 

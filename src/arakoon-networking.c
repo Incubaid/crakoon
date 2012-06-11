@@ -1,7 +1,7 @@
 /*
  * This file is part of Arakoon, a distributed key-value store.
  *
- * Copyright (C) 2010 Incubaid BVBA
+ * Copyright (C) 2010, 2012 Incubaid BVBA
  *
  * Licensees holding a valid Incubaid license may use this file in
  * accordance with Incubaid's Arakoon commercial license agreement. For
@@ -28,8 +28,12 @@
 #include <time.h>
 #include <poll.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <fcntl.h>
 
 #include "arakoon.h"
+#include "arakoon-utils.h"
 #include "arakoon-networking.h"
 
 #define NS_PER_MS (1000000)
@@ -219,4 +223,192 @@ arakoon_rc _arakoon_networking_poll_read(int fd, void *buf, size_t count,
     int *timeout) {
         return _arakoon_networking_poll_act(NETWORK_ACTION_READ, POLLIN,
                 fd, buf, count, timeout);
+}
+
+
+arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
+    int *timeout) {
+        int sock = -1, flags = 0, rc = -1;
+        arakoon_bool with_timeout = (timeout != NULL &&
+                *timeout != ARAKOON_CLIENT_CALL_OPTIONS_INFINITE_TIMEOUT);
+        struct pollfd ev;
+        struct timespec start = {0, 0}, now = {0, 0};
+        int timeout_ = 0, time_left = 0;
+        int ev_cnt = 0;
+        socklen_t len = 0;
+        int opt = 0;
+
+        FUNCTION_ENTER(_arakoon_networking_connect);
+
+        *fd = -1;
+
+        sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+        if(sock == -1) {
+                _arakoon_log_error("Failed to create socket");
+
+                return -errno;
+        }
+
+        if(!with_timeout) {
+                if(connect(sock, addr->ai_addr, addr->ai_addrlen) == -1) {
+                        close(sock);
+
+                        return -errno;
+                }
+
+                *fd = sock;
+
+                return ARAKOON_RC_SUCCESS;
+        }
+
+        timeout_ = *timeout;
+
+        if(timeout_ <= 0) {
+                close(sock);
+
+                return ARAKOON_RC_CLIENT_TIMEOUT;
+        }
+
+        rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+        if(rc != 0) {
+                close(sock);
+
+                return -errno;
+        }
+
+        memset(&ev, 0, sizeof(ev));
+
+        ev.fd = sock;
+        ev.events = POLLOUT;
+
+        flags = fcntl(sock, F_GETFL, NULL);
+        if(flags < 0) {
+                _arakoon_log_error("Failed to retrieve socket flags");
+                close(sock);
+
+                return -errno;
+        }
+
+        if(fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0) {
+                _arakoon_log_error("Failed to set socket flags");
+                close(sock);
+
+                return -errno;
+        }
+
+        rc = connect(sock, addr->ai_addr, addr->ai_addrlen);
+
+        /* TODO Since there's lots of overlap with code in
+         * _arakoon_networking_poll_act. some refactoring might be in place
+         */
+
+        if(rc < 0) {
+                if(errno != EINPROGRESS) {
+                        _arakoon_log_error("Failed to connect socket: %s",
+                                strerror(errno));
+
+                        close(sock);
+
+                        return -errno;
+                }
+
+                while(1) {
+                        rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &now);
+                        if(rc != 0) {
+                                close(sock);
+
+                                return -errno;
+                        }
+
+                        time_left = timeout_ - time_delta(&start, &now);
+
+                        if(time_left <= 0) {
+                                close(sock);
+
+                                return ARAKOON_RC_CLIENT_TIMEOUT;
+                        }
+
+                        ev_cnt = poll(&ev, 1, time_left);
+
+                        if(ev_cnt < 0) {
+                                if(errno == EINTR) {
+                                        continue;
+                                }
+
+                                close(sock);
+
+                                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID,
+                                        &now);
+                                if(rc != 0) {
+                                        return -errno;
+                                }
+
+                                *timeout = timeout_ - time_delta(&start, &now);
+
+                                return -errno;
+                        }
+
+                        if(ev_cnt == 0) {
+                                close(sock);
+
+                                *timeout = 0;
+                                return ARAKOON_RC_CLIENT_NETWORK_ERROR;
+                        }
+
+                        if(ev.revents & POLLERR || ev.revents & POLLHUP ||
+                                ev.revents & POLLNVAL) {
+                                close(sock);
+
+                                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID,
+                                        &now);
+                                if(rc != 0) {
+                                        return -errno;
+                                }
+
+                                *timeout = timeout_ - time_delta(&start, &now);
+
+                                if(ev.revents & POLLERR) {
+                                        return ARAKOON_RC_CLIENT_NETWORK_ERROR;
+                                }
+                                if(ev.revents & POLLHUP) {
+                                        return ARAKOON_RC_CLIENT_NOT_CONNECTED;
+                                }
+                                if(ev.revents & POLLNVAL) {
+                                        return ARAKOON_RC_CLIENT_NOT_CONNECTED;
+                                }
+
+                                /* Not reached */
+                                abort();
+                        }
+
+                        if((ev.revents & POLLOUT) != 0) {
+                                break;
+                        }
+                }
+        }
+
+        len = sizeof(opt);
+        if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &opt, &len) < 0) {
+                close(sock);
+
+                return -errno;
+        }
+
+        if(opt) {
+                close(sock);
+
+                return ARAKOON_RC_CLIENT_NETWORK_ERROR;
+        }
+
+        if(fcntl(sock, F_SETFL, flags) < 0) {
+                _arakoon_log_error("Failed to reset socket flags: %s",
+                        strerror(errno));
+                close(sock);
+
+                return -errno;
+        }
+
+        *fd = sock;
+
+        return ARAKOON_RC_SUCCESS;
 }
