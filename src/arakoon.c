@@ -1,7 +1,7 @@
 /*
  * This file is part of Arakoon, a distributed key-value store.
  *
- * Copyright (C) 2010 Incubaid BVBA
+ * Copyright (C) 2010, 2012 Incubaid BVBA
  *
  * Licensees holding a valid Incubaid license may use this file in
  * accordance with Incubaid's Arakoon commercial license agreement. For
@@ -1099,6 +1099,57 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
         RETURN_IF_NOT_SUCCESS(rc);
 
         ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
+        HANDLE_ERROR(rc, master, cluster, &timeout);
+
+        return rc;
+}
+
+arakoon_rc arakoon_assert(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key,
+    const size_t value_size, const void * const value) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
+
+        FUNCTION_ENTER(arakoon_assert);
+
+        _arakoon_cluster_reset_last_error(cluster);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(key);
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
+
+        ARAKOON_CLUSTER_GET_MASTER(cluster, master);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN
+                + ARAKOON_PROTOCOL_BOOL_LEN
+                + ARAKOON_PROTOCOL_STRING_LEN(key_size)
+                + ARAKOON_PROTOCOL_STRING_OPTION_LEN(value, value_size);
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x16, 0x00);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c,
+                arakoon_client_call_options_get_allow_dirty(options_));
+        ARAKOON_PROTOCOL_WRITE_STRING(c, key, key_size);
+        ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, value, value_size);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        WRITE_BYTES(master, command, len, rc, &timeout);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
+
         HANDLE_ERROR(rc, master, cluster, &timeout);
 
         return rc;

@@ -1,7 +1,7 @@
 /*
  * This file is part of Arakoon, a distributed key-value store.
  *
- * Copyright (C) 2010 Incubaid BVBA
+ * Copyright (C) 2010, 2012 Incubaid BVBA
  *
  * Licensees holding a valid Incubaid license may use this file in
  * accordance with Incubaid's Arakoon commercial license agreement. For
@@ -176,6 +176,23 @@ int main(int argc, char **argv) {
                 abort();
         }
         arakoon_sequence_free(seq);
+
+        rc = arakoon_assert(c, NULL, 11, "assert_test", 0, NULL);
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert");
+        rc = arakoon_assert(c, NULL, 11, "assert_test", 3, "foo");
+        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
+                fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
+                abort();
+        }
+        rc = arakoon_set(c, NULL, 11, "assert_test", 3, "foo");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_set");
+        rc = arakoon_assert(c, NULL, 11, "assert_test", 0, NULL);
+        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
+                fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
+                abort();
+        }
+        rc = arakoon_assert(c, NULL, 11, "assert_test", 3, "foo");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert");
 
         arakoon_client_call_options_free(options);
         arakoon_cluster_free(c);

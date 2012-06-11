@@ -628,6 +628,19 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
     const ArakoonClientCallOptions * const options,
     const ArakoonSequence * const sequence)
     ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send an 'assert' call to the server
+ *
+ * 'value' can be NULL to denote 'None', in which case 'size' should be 0 as
+ * well.
+ *
+ * This call doesn't produce any result, but will return
+ * ARAKOON_RC_ASSERTION_FAILED if the assertion failed.
+ */
+arakoon_rc arakoon_assert(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key,
+    const size_t value_size, const void * const value)
+    ARAKOON_GNUC_NONNULL2(1, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 ARAKOON_END_DECLS
 

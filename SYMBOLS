@@ -57,6 +57,7 @@ arakoon_range_entries
 arakoon_prefix
 arakoon_test_and_set
 arakoon_sequence
+arakoon_assert
 
 # arakoon-nursery.h
 arakoon_nursery_new
