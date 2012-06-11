@@ -750,7 +750,8 @@ arakoon_rc arakoon_range(ArakoonCluster *cluster,
         return rc;
 }
 
-arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
+static arakoon_rc _arakoon_range_helper(char cmd1, char cmd2,
+    ArakoonCluster *cluster,
     const ArakoonClientCallOptions * const options,
     const size_t begin_key_size, const void * const begin_key,
     const arakoon_bool begin_key_included,
@@ -767,7 +768,7 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
         READ_OPTIONS;
         timeout = arakoon_client_call_options_get_timeout(options_);
 
-        FUNCTION_ENTER(arakoon_range_entries);
+        FUNCTION_ENTER(_arakoon_range_helper);
 
         _arakoon_cluster_reset_last_error(cluster);
 
@@ -789,7 +790,7 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
 
         c = command;
 
-        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x0f, 0x00);
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, cmd1, cmd2);
         ARAKOON_PROTOCOL_WRITE_BOOL(c,
                 arakoon_client_call_options_get_allow_dirty(options_));
         ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, begin_key, begin_key_size);
@@ -822,6 +823,25 @@ arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
 
         return rc;
 }
+
+arakoon_rc arakoon_range_entries(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t begin_key_size, const void * const begin_key,
+    const arakoon_bool begin_key_included,
+    const size_t end_key_size, const void * const end_key,
+    const arakoon_bool end_key_included,
+    const ssize_t max_elements,
+    ArakoonKeyValueList **result) {
+        FUNCTION_ENTER(arakoon_range_entries);
+
+        return _arakoon_range_helper(0x0f, 0x00,
+                cluster, options,
+                begin_key_size, begin_key, begin_key_included,
+                end_key_size, end_key, end_key_included,
+                max_elements,
+                result);
+}
+
 
 arakoon_rc arakoon_prefix(ArakoonCluster *cluster,
     const ArakoonClientCallOptions * const options,
@@ -1153,4 +1173,22 @@ arakoon_rc arakoon_assert(ArakoonCluster *cluster,
         HANDLE_ERROR(rc, master, cluster, &timeout);
 
         return rc;
+}
+
+arakoon_rc arakoon_rev_range_entries(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t begin_key_size, const void * const begin_key,
+    const arakoon_bool begin_key_included,
+    const size_t end_key_size, const void * const end_key,
+    const arakoon_bool end_key_included,
+    const ssize_t max_elements,
+    ArakoonKeyValueList **result) {
+        FUNCTION_ENTER(arakoon_range_entries);
+
+        return _arakoon_range_helper(0x23, 0x00,
+                cluster, options,
+                begin_key_size, begin_key, begin_key_included,
+                end_key_size, end_key, end_key_included,
+                max_elements,
+                result);
 }

@@ -641,6 +641,25 @@ arakoon_rc arakoon_assert(ArakoonCluster *cluster,
     const size_t key_size, const void * const key,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_NONNULL2(1, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'rev_range_entries' call to the server
+ *
+ * 'begin_key' and 'end_key' can be set to NULL to denote 'None'.
+ * 'begin_key_size' and 'end_key_size' should be set to 0 accordingly.
+ *
+ * If 'max_elements' is negative, all matches will be returned.
+ *
+ * The result will be stored at 'result', and should be released using
+ * arakoon_key_value_list_free by the caller when no longer required.
+ */
+arakoon_rc arakoon_rev_range_entries(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t begin_key_size, const void * const begin_key,
+    const arakoon_bool begin_key_included,
+    const size_t end_key_size, const void * const end_key,
+    const arakoon_bool end_key_included,
+    const ssize_t max_elements,
+    ArakoonKeyValueList **result) ARAKOON_GNUC_NONNULL2(1, 10)
+    ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 ARAKOON_END_DECLS
 

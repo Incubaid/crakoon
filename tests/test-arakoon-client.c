@@ -194,6 +194,32 @@ int main(int argc, char **argv) {
         rc = arakoon_assert(c, NULL, 11, "assert_test", 3, "foo");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert");
 
+
+        rc = arakoon_rev_range_entries(c, options, 0, NULL, ARAKOON_BOOL_TRUE,
+                0, NULL, ARAKOON_BOOL_TRUE, -1, &r1);
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_rev_range_entries");
+
+        iter1 = arakoon_key_value_list_create_iter(r1);
+        ABORT_IF_NULL(iter1, "arakoon_key_value_list_create_iter");
+
+        FOR_ARAKOON_KEY_VALUE_ITER(iter1, &l0, &v0, &l1, &v1) {
+                s0 = check_arakoon_malloc((l0 + 1) * sizeof(char));
+                ABORT_IF_NULL(s0, "check_arakoon_malloc");
+                s1 = check_arakoon_malloc((l1 + 1) * sizeof(char));
+                ABORT_IF_NULL(s1, "check_arakoon_malloc");
+                memcpy(s0, v0, l0);
+                s0[l0] = 0;
+                memcpy(s1, v1, l1);
+                s1[l1] = 0;
+                printf("Key: %s, value: %s\n", s0, s1);
+                check_arakoon_free(s0);
+                check_arakoon_free(s1);
+        }
+
+        arakoon_key_value_list_iter_free(iter1);
+        arakoon_key_value_list_free(r1);
+
+
         arakoon_client_call_options_free(options);
         arakoon_cluster_free(c);
 
