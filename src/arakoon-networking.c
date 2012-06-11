@@ -40,6 +40,14 @@
 #define MS_PER_S (1000)
 #define NS_PER_S (MS_PER_S * NS_PER_MS)
 
+#ifdef CLOCK_MONOTONIC_RAW
+# define CLOCK_SOURCE CLOCK_MONOTONIC_RAW
+#elif defined CLOCK_MONOTONIC
+# define CLOCK_SOURCE CLOCK_MONOTONIC
+#else
+# define CLOCK_SOURCE CLOCK_REALTIME
+#endif
+
 static long time_delta(const struct timespec * const start,
     const struct timespec * const end) {
         long nd = 0;
@@ -101,7 +109,7 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
                         return ARAKOON_RC_CLIENT_TIMEOUT;
                 }
 
-                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+                rc = clock_gettime(CLOCK_SOURCE, &start);
 
                 if(rc != 0) {
                         return -errno;
@@ -114,7 +122,7 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
         while(todo > 0) {
                 if(with_timeout) {
                         /* Wait until we can write, or timeout occurs */
-                        rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &now);
+                        rc = clock_gettime(CLOCK_SOURCE, &now);
                         if(rc != 0) {
                                 return -errno;
                         }
@@ -124,8 +132,7 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
                         ev_cnt = poll(&ev, 1, time_left);
 
                         if(ev_cnt < 0) {
-                                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID,
-                                        &now);
+                                rc = clock_gettime(CLOCK_SOURCE, &now);
                                 if(rc != 0) {
                                         return -errno;
                                 }
@@ -142,8 +149,7 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
 
                         if(ev.revents & POLLERR || ev.revents & POLLHUP ||
                                 ev.revents & POLLNVAL) {
-                                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID,
-                                        &now);
+                                rc = clock_gettime(CLOCK_SOURCE, &now);
                                 if(rc != 0) {
                                         return -errno;
                                 }
@@ -197,7 +203,7 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
         }
 
         if(with_timeout) {
-                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &now);
+                rc = clock_gettime(CLOCK_SOURCE, &now);
                 if(rc != 0) {
                         return -errno;
                 }
@@ -269,7 +275,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
                 return ARAKOON_RC_CLIENT_TIMEOUT;
         }
 
-        rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+        rc = clock_gettime(CLOCK_SOURCE, &start);
         if(rc != 0) {
                 close(sock);
 
@@ -313,7 +319,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
                 }
 
                 while(1) {
-                        rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &now);
+                        rc = clock_gettime(CLOCK_SOURCE, &now);
                         if(rc != 0) {
                                 close(sock);
 
@@ -337,8 +343,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
 
                                 close(sock);
 
-                                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID,
-                                        &now);
+                                rc = clock_gettime(CLOCK_SOURCE, &now);
                                 if(rc != 0) {
                                         return -errno;
                                 }
@@ -359,8 +364,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
                                 ev.revents & POLLNVAL) {
                                 close(sock);
 
-                                rc = clock_gettime(CLOCK_PROCESS_CPUTIME_ID,
-                                        &now);
+                                rc = clock_gettime(CLOCK_SOURCE, &now);
                                 if(rc != 0) {
                                         return -errno;
                                 }
