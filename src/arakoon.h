@@ -97,8 +97,10 @@
 
 #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4)
 # define ARAKOON_GNUC_UNUSED __attribute__ ((__unused__))
+# define ARAKOON_GNUC_CONST __attribute__((__const__))
 #else
 # define ARAKOON_GNUC_UNUSED
+# define ARAKOON_GNUC_CONST
 #endif
 
 #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 96)
@@ -185,6 +187,20 @@ const char * arakoon_strerror(arakoon_rc n);
 typedef char arakoon_bool;
 #define ARAKOON_BOOL_TRUE (1)
 #define ARAKOON_BOOL_FALSE (0)
+
+/* Library version information */
+/* Retrieve the major version number of the library */
+unsigned int arakoon_library_version_major(void) ARAKOON_GNUC_CONST;
+/* Retrieve the minor version number of the library */
+unsigned int arakoon_library_version_minor(void) ARAKOON_GNUC_CONST;
+/* Retrieve the micro version number of the library */
+unsigned int arakoon_library_version_micro(void) ARAKOON_GNUC_CONST;
+/* Retrieve a human-readable version string of the library
+ *
+ * Don't assume any formatting of this string, it could contain anything at
+ * all.
+ */
+const char * arakoon_library_version_info(void) ARAKOON_GNUC_CONST;
 
 /* Turn a generic byte sequence into a C-string
  *

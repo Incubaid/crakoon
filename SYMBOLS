@@ -59,6 +59,10 @@ arakoon_test_and_set
 arakoon_sequence
 arakoon_assert
 arakoon_rev_range_entries
+arakoon_library_version_info
+arakoon_library_version_major
+arakoon_library_version_micro
+arakoon_library_version_minor
 
 # arakoon-nursery.h
 arakoon_nursery_new

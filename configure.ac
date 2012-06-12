@@ -78,6 +78,15 @@ AC_DEFINE(CRAKOON_INTERFACE_AGE, [crakoon_interface_age],
 AC_DEFINE(CRAKOON_BINARY_AGE, [crakoon_binary_age],
 	  [Define to the CRAKOON binary age])
 
+if (git --version > /dev/null 2>&1 && test -d .git);
+then
+  CRAKOON_GIT_VERSION=`git describe --all --dirty --always --long`
+else
+  CRAKOON_GIT_VERSION="unknown"
+fi
+
+AC_SUBST(CRAKOON_GIT_VERSION)
+
 # libtool versioning
 LT_RELEASE=crakoon_lt_release
 LT_CURRENT=crakoon_lt_current

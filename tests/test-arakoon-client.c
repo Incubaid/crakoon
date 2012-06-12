@@ -56,6 +56,12 @@ int main(int argc, char **argv) {
                 return 1;
         }
 
+        printf("Working with crakoon version %u.%u.%u (%s)\n",
+                arakoon_library_version_major(),
+                arakoon_library_version_minor(),
+                arakoon_library_version_micro(),
+                arakoon_library_version_info());
+
         arakoon_memory_set_hooks(&hooks);
         arakoon_log_set_handler(arakoon_log_get_stderr_handler());
 
