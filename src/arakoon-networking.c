@@ -234,185 +234,252 @@ arakoon_rc _arakoon_networking_poll_read(int fd, void *buf, size_t count,
 
 arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
     int *timeout) {
-        int sock = -1, flags = 0, rc = -1;
+        arakoon_rc rc = ARAKOON_RC_CLIENT_NETWORK_ERROR;
+        int ret = 0, sock = -1, the_socket = -1, i = 0, j = 0;
+        const struct addrinfo *rp = NULL;
+        struct timespec start = {0, 0}, now = {0, 0};
+        struct pollfd *ev = NULL;
+        int num_addresses = 0;
+        int *fds = NULL, *flags = NULL;
+        short revents = 0;
         arakoon_bool with_timeout = (timeout != NULL &&
                 *timeout != ARAKOON_CLIENT_CALL_OPTIONS_INFINITE_TIMEOUT);
-        struct pollfd ev;
-        struct timespec start = {0, 0}, now = {0, 0};
         int timeout_ = 0, time_left = 0;
-        int ev_cnt = 0;
-        socklen_t len = 0;
-        int opt = 0;
 
         FUNCTION_ENTER(_arakoon_networking_connect);
 
-        *fd = -1;
-
-        sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-        if(sock == -1) {
-                _arakoon_log_error("Failed to create socket");
-
-                return -errno;
-        }
-
-        if(!with_timeout) {
-                if(connect(sock, addr->ai_addr, addr->ai_addrlen) == -1) {
-                        close(sock);
-
-                        return -errno;
-                }
-
-                *fd = sock;
-
-                return ARAKOON_RC_SUCCESS;
-        }
-
         timeout_ = *timeout;
-
         if(timeout_ <= 0) {
-                close(sock);
-
                 return ARAKOON_RC_CLIENT_TIMEOUT;
         }
 
+        *fd = -1;
+
         rc = clock_gettime(CLOCK_SOURCE, &start);
         if(rc != 0) {
-                close(sock);
-
                 return -errno;
         }
 
-        memset(&ev, 0, sizeof(ev));
-
-        ev.fd = sock;
-        ev.events = POLLOUT;
-
-        flags = fcntl(sock, F_GETFL, NULL);
-        if(flags < 0) {
-                _arakoon_log_error("Failed to retrieve socket flags");
-                close(sock);
-
-                return -errno;
+        num_addresses = 0;
+        for(rp = addr; rp != NULL; rp = rp->ai_next) {
+                num_addresses++;
         }
 
-        if(fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0) {
-                _arakoon_log_error("Failed to set socket flags");
-                close(sock);
-
-                return -errno;
+        ev = arakoon_mem_new(num_addresses, struct pollfd);
+        if(ev == NULL) {
+                rc = -ENOMEM;
+                goto cleanup;
         }
+        memset(ev, 0, num_addresses * sizeof(struct pollfd));
+        fds = arakoon_mem_new(num_addresses, int);
+        if(fds == NULL) {
+                rc = -ENOMEM;
+                goto cleanup;
+        }
+        memset(fds, 0, num_addresses * sizeof(int));
+        flags = arakoon_mem_new(num_addresses, int);
+        if(flags == NULL) {
+                rc = -ENOMEM;
+                goto cleanup;
+        }
+        memset(flags, 0, num_addresses * sizeof(int));
 
-        rc = connect(sock, addr->ai_addr, addr->ai_addrlen);
 
-        /* TODO Since there's lots of overlap with code in
-         * _arakoon_networking_poll_act. some refactoring might be in place
-         */
+        i = -1;
+        for(rp = addr; rp != NULL; rp = rp->ai_next) {
+                i++;
 
-        if(rc < 0) {
-                if(errno != EINPROGRESS) {
-                        _arakoon_log_error("Failed to connect socket: %s",
+                sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+
+                if(sock == -1) {
+                        _arakoon_log_error("Failed to create socket: %s",
                                 strerror(errno));
+                        fds[i] = -1;
 
-                        close(sock);
-
-                        return -errno;
+                        continue;
                 }
 
-                while(1) {
-                        rc = clock_gettime(CLOCK_SOURCE, &now);
-                        if(rc != 0) {
-                                close(sock);
+                flags[i] = fcntl(sock, F_GETFL, NULL);
+                if(flags[i] < 0) {
+                        _arakoon_log_error(
+                                "Failed to retrieve socket flags: %s",
+                                strerror(errno));
+                        close(sock);
 
-                                return -errno;
+                        fds[i] = -1;
+
+                        continue;
+                }
+
+                if(fcntl(sock, F_SETFL, flags[i] | O_NONBLOCK) < 0) {
+                        _arakoon_log_error(
+                                "Failed to set socket flags: %s",
+                                strerror(errno));
+                        close(sock);
+
+                        fds[i] = -1;
+
+                        continue;
+                }
+
+                ret = connect(sock, rp->ai_addr, rp->ai_addrlen);
+
+                if(ret < 0) {
+                        if(errno != EINPROGRESS) {
+                                _arakoon_log_error(
+                                        "Failed to connect socket: %s",
+                                        strerror(errno));
+
+                                close(sock);
+                                fds[i] = -1;
+
+                                continue;
+                        }
+                }
+                else {
+                        if(fcntl(sock, F_SETFL, flags[i]) >= 0) {
+                                the_socket = sock;
+                                break;
+                        }
+                        else {
+                                _arakoon_log_error(
+                                        "Failed to set socket flags: %s",
+                                        strerror(errno));
+
+                                close(sock);
+                                fds[i] = -1;
+
+                                continue;
+                        }
+                }
+
+                fds[i] = sock;
+        }
+
+        if(the_socket >= 0) {
+                rc = ARAKOON_RC_SUCCESS;
+
+                *fd = the_socket;
+
+                goto cleanup;
+        }
+
+        while(1) {
+                if(with_timeout) {
+                        ret = clock_gettime(CLOCK_SOURCE, &now);
+                        if(rc != 0) {
+                                rc = -errno;
+
+                                goto cleanup;
                         }
 
                         time_left = timeout_ - time_delta(&start, &now);
 
                         if(time_left <= 0) {
-                                close(sock);
+                                rc = ARAKOON_RC_CLIENT_TIMEOUT;
 
-                                return ARAKOON_RC_CLIENT_TIMEOUT;
+                                goto cleanup;
+                        }
+                }
+                else {
+                        time_left = 0;
+                }
+
+                j = 0;
+
+                memset(ev, 0, num_addresses * sizeof(struct pollfd));
+
+                for(i = 0; i < num_addresses; i++) {
+                        if(fds[i] >= 0) {
+                                ev[j].fd = fds[i];
+                                ev[j].events = POLLOUT;
+
+                                j++;
+                        }
+                }
+
+                if(j == 0) {
+                        rc = ARAKOON_RC_CLIENT_NETWORK_ERROR;
+
+                        goto cleanup;
+                }
+
+                do {
+                        ret = poll(ev, j, time_left);
+                } while(ret < 0 && errno == EINTR);
+
+                if(ret == 0) {
+                        rc = ARAKOON_RC_CLIENT_TIMEOUT;
+
+                        goto cleanup;
+                }
+
+                if(ret < 0) {
+                        _arakoon_log_error("Poll failed: %s",
+                                strerror(errno));
+                        rc = -errno;
+
+                        goto cleanup;
+                }
+
+                for(i = 0; i < ret; i++) {
+                        revents = ev[i].revents;
+                        if(revents & POLLERR ||
+                                revents & POLLHUP ||
+                                revents & POLLNVAL) {
+                                close(ev[i].fd);
+
+                                for(j = 0; j < num_addresses; j++) {
+                                        if(fds[j] == ev[i].fd) {
+                                                fds[j] = -1;
+                                        }
+                                }
                         }
 
-                        ev_cnt = poll(&ev, 1, time_left);
-
-                        if(ev_cnt < 0) {
-                                if(errno == EINTR) {
-                                        continue;
-                                }
-
-                                close(sock);
-
-                                rc = clock_gettime(CLOCK_SOURCE, &now);
-                                if(rc != 0) {
-                                        return -errno;
-                                }
-
-                                *timeout = timeout_ - time_delta(&start, &now);
-
-                                return -errno;
+                        else if((revents & POLLOUT) != 0) {
+                                the_socket = ev[i].fd;
                         }
+                }
 
-                        if(ev_cnt == 0) {
-                                close(sock);
+                if(the_socket >= 0) {
+                        for(i = 0; i < num_addresses; i++) {
+                                if(fds[i] == the_socket) {
+                                        if(fcntl(the_socket, F_SETFL, flags[i]) < 0) {
+                                                _arakoon_log_error("Failed to set flags: %s",
+                                                        strerror(errno));
 
-                                *timeout = 0;
-                                return ARAKOON_RC_CLIENT_NETWORK_ERROR;
+                                                close(the_socket);
+                                                fds[i] = -1;
+                                        }
+                                        else {
+                                                rc = ARAKOON_RC_SUCCESS;
+                                                *fd = the_socket;
+
+                                                goto cleanup;
+                                        }
+                                }
                         }
+                }
 
-                        if(ev.revents & POLLERR || ev.revents & POLLHUP ||
-                                ev.revents & POLLNVAL) {
-                                close(sock);
+                the_socket = -1;
+        }
 
-                                rc = clock_gettime(CLOCK_SOURCE, &now);
-                                if(rc != 0) {
-                                        return -errno;
-                                }
+        if(the_socket < 0) {
+                rc = ARAKOON_RC_CLIENT_NETWORK_ERROR;
+        }
 
-                                *timeout = timeout_ - time_delta(&start, &now);
+cleanup:
+        for(i = 0; i < num_addresses; i++) {
+                if(fds[i] >= 0 && fds[i] != the_socket) {
+                        close(fds[i]);
 
-                                if(ev.revents & POLLERR) {
-                                        return ARAKOON_RC_CLIENT_NETWORK_ERROR;
-                                }
-                                if(ev.revents & POLLHUP) {
-                                        return ARAKOON_RC_CLIENT_NOT_CONNECTED;
-                                }
-                                if(ev.revents & POLLNVAL) {
-                                        return ARAKOON_RC_CLIENT_NOT_CONNECTED;
-                                }
-
-                                /* Not reached */
-                                abort();
-                        }
-
-                        if((ev.revents & POLLOUT) != 0) {
-                                break;
-                        }
+                        fds[i] = -1;
                 }
         }
 
-        len = sizeof(opt);
-        if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &opt, &len) < 0) {
-                close(sock);
+        arakoon_mem_free(ev);
+        arakoon_mem_free(fds);
+        arakoon_mem_free(flags);
 
-                return -errno;
-        }
-
-        if(opt) {
-                close(sock);
-
-                return ARAKOON_RC_CLIENT_NETWORK_ERROR;
-        }
-
-        if(fcntl(sock, F_SETFL, flags) < 0) {
-                _arakoon_log_error("Failed to reset socket flags: %s",
-                        strerror(errno));
-                close(sock);
-
-                return -errno;
-        }
-
-        *fd = sock;
-
-        return ARAKOON_RC_SUCCESS;
+        return rc;
 }

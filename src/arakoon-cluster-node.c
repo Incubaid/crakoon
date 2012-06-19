@@ -93,7 +93,6 @@ void _arakoon_cluster_node_free(ArakoonClusterNode *node) {
 
 arakoon_rc _arakoon_cluster_node_connect(ArakoonClusterNode *node,
     int *timeout) {
-        struct addrinfo *rp = NULL;
         size_t n = 0, len = 0;
         char *prologue = NULL, *p = NULL;
         arakoon_rc rc = 0;
@@ -108,20 +107,14 @@ arakoon_rc _arakoon_cluster_node_connect(ArakoonClusterNode *node,
                 return ARAKOON_RC_SUCCESS;
         }
 
-        for(rp = node->address; rp != NULL; rp = rp->ai_next) {
-                rc = _arakoon_networking_connect(rp, &(node->fd), timeout);
+        rc = _arakoon_networking_connect(node->address, &(node->fd), timeout);
 
-                if(rc == ARAKOON_RC_SUCCESS) {
-                        break;
-                }
-
+        if(rc != ARAKOON_RC_SUCCESS) {
                 node->fd = -1;
-        }
 
-        if(rp == NULL) {
                 _arakoon_log_error("Unable to connect to node %s", node->name);
 
-                return ARAKOON_RC_CLIENT_NETWORK_ERROR;
+                return rc;
         }
 
         /* Send prologue */
