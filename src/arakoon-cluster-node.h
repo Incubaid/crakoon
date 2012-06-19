@@ -1,7 +1,7 @@
 /*
  * This file is part of Arakoon, a distributed key-value store.
  *
- * Copyright (C) 2010 Incubaid BVBA
+ * Copyright (C) 2010, 2012 Incubaid BVBA
  *
  * Licensees holding a valid Incubaid license may use this file in
  * accordance with Incubaid's Arakoon commercial license agreement. For
@@ -28,14 +28,6 @@
 
 ARAKOON_BEGIN_DECLS
 
-typedef struct ArakoonClusterNode ArakoonClusterNode;
-
-ArakoonClusterNode * _arakoon_cluster_node_new(const char * name,
-    const ArakoonCluster * const cluster, struct addrinfo * address)
-    ARAKOON_GNUC_NONNULL3(1, 2, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT
-    ARAKOON_GNUC_MALLOC;
-void _arakoon_cluster_node_free(ArakoonClusterNode *node);
-
 arakoon_rc _arakoon_cluster_node_connect(ArakoonClusterNode *node,
     int *timeout)
     ARAKOON_GNUC_NONNULL1(1) ARAKOON_GNUC_WARN_UNUSED_RESULT;
@@ -61,6 +53,9 @@ ArakoonClusterNode * _arakoon_cluster_node_get_next(
 void _arakoon_cluster_node_set_next(ArakoonClusterNode *node,
     ArakoonClusterNode *next)
     ARAKOON_GNUC_NONNULL;
+arakoon_rc _arakoon_cluster_node_set_cluster(ArakoonClusterNode *node,
+    ArakoonCluster *cluster)
+    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 
 ARAKOON_END_DECLS

@@ -42,7 +42,11 @@ arakoon_cluster_get_last_error
 arakoon_cluster_connect_master
 arakoon_cluster_get_name
 arakoon_cluster_add_node
-arakoon_cluster_add_node_tcp
+
+arakoon_cluster_node_new
+arakoon_cluster_node_free
+arakoon_cluster_node_add_address
+arakoon_cluster_node_add_address_tcp
 
 arakoon_hello
 arakoon_who_master

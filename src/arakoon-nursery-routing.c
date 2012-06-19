@@ -1,7 +1,7 @@
 /*
  * This file is part of Arakoon, a distributed key-value store.
  *
- * Copyright (C) 2010 Incubaid BVBA
+ * Copyright (C) 2010, 2012 Incubaid BVBA
  *
  * Licensees holding a valid Incubaid license may use this file in
  * accordance with Incubaid's Arakoon commercial license agreement. For
@@ -257,6 +257,7 @@ static arakoon_rc arakoon_nursery_routing_parse_clusters(
     const void **data, ArakoonCluster *** result) {
         uint32_t count = 0;
         ArakoonCluster **ret = NULL;
+        ArakoonClusterNode *node = NULL;
         char *cluster_id = NULL;
         uint32_t cluster_size = 0;
         char *node_id = NULL, *ip = NULL;
@@ -287,11 +288,23 @@ static arakoon_rc arakoon_nursery_routing_parse_clusters(
 
                         snprintf(service, sizeof(service), "%u", port);
 
-                        rc = arakoon_cluster_add_node_tcp(cluster, node_id, ip,
+                        node = arakoon_cluster_node_new(node_id);
+                        if(node == NULL) {
+                                goto failure;
+                        }
+
+                        rc = arakoon_cluster_node_add_address_tcp(node, ip,
                                 service);
 
                         arakoon_mem_free(node_id);
                         arakoon_mem_free(ip);
+
+                        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                                arakoon_cluster_node_free(node);
+                                goto failure;
+                        }
+
+                        rc = arakoon_cluster_add_node(cluster, node);
 
                         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                                 goto failure;

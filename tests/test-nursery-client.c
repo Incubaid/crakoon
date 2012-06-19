@@ -1,7 +1,7 @@
 /*
  * This file is part of Arakoon, a distributed key-value store.
  *
- * Copyright (C) 2010 Incubaid BVBA
+ * Copyright (C) 2010, 2012 Incubaid BVBA
  *
  * Licensees holding a valid Incubaid license may use this file in
  * accordance with Incubaid's Arakoon commercial license agreement. For
@@ -39,6 +39,7 @@
 int main(int argc, char **argv) {
         ArakoonCluster *keeper = NULL;
         ArakoonNursery *nursery = NULL;
+        ArakoonClusterNode *node = NULL;
         arakoon_rc rc = 0;
         int i = 0;
         size_t value_length = 0;
@@ -63,10 +64,17 @@ int main(int argc, char **argv) {
         ABORT_IF_NULL(keeper, "arakoon_cluster_new");
 
         for(i = 2; i < argc; i++) {
-            rc = arakoon_cluster_add_node_tcp(keeper, argv[i], argv[i + 1],
-                    argv[i + 2]);
-            ABORT_IF_NOT_SUCCESS(rc, "arakoon_cluster_add_node_tcp");
-            i += 2;
+                node = arakoon_cluster_node_new(argv[i]);
+                ABORT_IF_NULL(node, "arakoon_cluster_node_new");
+
+                rc = arakoon_cluster_node_add_address_tcp(node, argv[i + 1],
+                        argv[i + 2]);
+                ABORT_IF_NOT_SUCCESS(rc,
+                        "arakoon_cluster_node_add_address_tcp");
+
+                rc = arakoon_cluster_add_node(keeper, node);
+                ABORT_IF_NOT_SUCCESS(rc, "arakoon_cluster_add_node");
+                i += 2;
         }
 
         rc = arakoon_cluster_connect_master(keeper, NULL);

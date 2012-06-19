@@ -31,6 +31,7 @@
 
 int main(int argc, char **argv) {
         ArakoonCluster *c = NULL;
+        ArakoonClusterNode *node = NULL;
         arakoon_rc rc = 0;
         ArakoonClientCallOptions *options = NULL;
         ArakoonValueList *r0 = NULL, *r2 = NULL;
@@ -72,9 +73,19 @@ int main(int argc, char **argv) {
         ABORT_IF_NULL(c, "arakoon_cluster_new");
 
         for(i = 2; i < argc; i++) {
-            rc = arakoon_cluster_add_node_tcp(c, argv[i], argv[i + 1], argv[i + 2]);
-            ABORT_IF_NOT_SUCCESS(rc, "arakoon_cluster_add_node_tcp");
-            i += 2;
+                node = arakoon_cluster_node_new(argv[i]);
+                ABORT_IF_NULL(node, "arakoon_cluster_node_new");
+
+                rc = arakoon_cluster_node_add_address_tcp(node, argv[i + 1],
+                        argv[i + 2]);
+                ABORT_IF_NOT_SUCCESS(rc,
+                        "arakoon_cluster_node_add_address_tcp");
+
+                rc = arakoon_cluster_add_node(c, node);
+                ABORT_IF_NOT_SUCCESS(rc,
+                        "arakoon_cluster_add_node");
+
+                i += 2;
         }
 
         rc = arakoon_cluster_connect_master(c, options);

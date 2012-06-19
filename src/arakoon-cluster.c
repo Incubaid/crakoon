@@ -1,7 +1,7 @@
 /*
  * This file is part of Arakoon, a distributed key-value store.
  *
- * Copyright (C) 2010 Incubaid BVBA
+ * Copyright (C) 2010, 2012 Incubaid BVBA
  *
  * Licensees holding a valid Incubaid license may use this file in
  * accordance with Incubaid's Arakoon commercial license agreement. For
@@ -93,7 +93,7 @@ void arakoon_cluster_free(ArakoonCluster *cluster) {
         while(node != NULL) {
                 next_node = _arakoon_cluster_node_get_next(node);
                 _arakoon_cluster_node_disconnect(node);
-                _arakoon_cluster_node_free(node);
+                arakoon_cluster_node_free(node);
                 node = next_node;
         }
 
@@ -237,58 +237,26 @@ void _arakoon_cluster_set_last_error(ArakoonCluster * const cluster,
 }
 
 arakoon_rc arakoon_cluster_add_node(ArakoonCluster *cluster,
-    const char * const name, struct addrinfo * const address) {
-        ArakoonClusterNode *node = NULL;
+    ArakoonClusterNode *node) {
+        arakoon_rc rc = ARAKOON_RC_SUCCESS;
 
         FUNCTION_ENTER(arakoon_cluster_add_node);
 
         ASSERT_NON_NULL_RC(cluster);
-        ASSERT_NON_NULL_RC(name);
-        ASSERT_NON_NULL_RC(address);
+        ASSERT_NON_NULL_RC(node);
 
-        _arakoon_log_debug("Adding node %s to cluster %s", name, cluster->name);
+        _arakoon_log_debug("Adding node %s to cluster %s",
+                _arakoon_cluster_node_get_name(node), cluster->name);
 
-        node = _arakoon_cluster_node_new(name, cluster, address);
-        RETURN_ENOMEM_IF_NULL(node);
+        rc = _arakoon_cluster_node_set_cluster(node, cluster);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                return rc;
+        }
 
         _arakoon_cluster_node_set_next(node, cluster->nodes);
         cluster->nodes = node;
 
         return ARAKOON_RC_SUCCESS;
-}
-
-arakoon_rc arakoon_cluster_add_node_tcp(ArakoonCluster *cluster,
-    const char * const name, const char * const host, const char * const service) {
-        struct addrinfo hints;
-        struct addrinfo *result;
-        int rc = 0;
-
-        FUNCTION_ENTER(arakoon_cluster_add_node_tcp);
-
-        ASSERT_NON_NULL_RC(cluster);
-        ASSERT_NON_NULL_RC(name);
-        ASSERT_NON_NULL_RC(host);
-        ASSERT_NON_NULL_RC(service);
-
-        _arakoon_log_debug("Looking up node %s at %s:%s", name, host, service);
-
-        memset(&hints, 0, sizeof(struct addrinfo));
-        hints.ai_family = AF_UNSPEC; /* IPv4 and IPv6, whatever */
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_flags = 0;
-        hints.ai_protocol = 0; /* Any protocol */
-
-        rc = getaddrinfo(host, service, &hints, &result);
-
-        if(rc != 0) {
-                _arakoon_log_error("Address lookup failed: %s",
-                        gai_strerror(rc));
-                return ARAKOON_RC_CLIENT_NETWORK_ERROR;
-        }
-
-        rc = arakoon_cluster_add_node(cluster, name, result);
-
-        return rc;
 }
 
 ArakoonClusterNode * _arakoon_cluster_get_master(

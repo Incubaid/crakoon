@@ -24,10 +24,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
+#include "arakoon.h"
 #include "arakoon-protocol.h"
 #include "arakoon-utils.h"
 #include "arakoon-cluster-node.h"
+#include "arakoon-assert.h"
 
 struct ArakoonClusterNode {
         char * name;
@@ -38,12 +41,11 @@ struct ArakoonClusterNode {
         ArakoonClusterNode * next;
 };
 
-ArakoonClusterNode * _arakoon_cluster_node_new(const char * name,
-    const ArakoonCluster * const cluster, struct addrinfo * address) {
+ArakoonClusterNode * arakoon_cluster_node_new(const char * name) {
         ArakoonClusterNode *ret = NULL;
         size_t len = 0;
 
-        FUNCTION_ENTER(_arakoon_cluster_node_new);
+        FUNCTION_ENTER(arakoon_cluster_node_new);
 
         ret = arakoon_mem_new(1, ArakoonClusterNode);
         RETURN_NULL_IF_NULL(ret);
@@ -57,9 +59,9 @@ ArakoonClusterNode * _arakoon_cluster_node_new(const char * name,
         }
 
         strncpy(ret->name, name, len);
-        ret->cluster = cluster;
 
-        ret->address = address;
+        ret->cluster = NULL;
+        ret->address = NULL;
         ret->fd = -1;
         ret->next = NULL;
 
@@ -75,7 +77,7 @@ nomem:
         return NULL;
 }
 
-void _arakoon_cluster_node_free(ArakoonClusterNode *node) {
+void arakoon_cluster_node_free(ArakoonClusterNode *node) {
         FUNCTION_ENTER(_arakoon_cluster_node_free);
 
         RETURN_IF_NULL(node);
@@ -217,4 +219,74 @@ void _arakoon_cluster_node_set_next(ArakoonClusterNode *node,
 arakoon_rc _arakoon_cluster_node_write_bytes(ArakoonClusterNode *node,
     size_t len, void *data, int *timeout) {
         return _arakoon_networking_poll_write(node->fd, data, len, timeout);
+}
+
+arakoon_rc arakoon_cluster_node_add_address(ArakoonClusterNode *node,
+    struct addrinfo *address) {
+        struct addrinfo *rp = NULL;
+
+        FUNCTION_ENTER(arakoon_cluster_node_add_address);
+
+        ASSERT_NON_NULL_RC(node);
+        ASSERT_NON_NULL_RC(address);
+
+        if(node->address == NULL) {
+                node->address = address;
+        }
+        else {
+                for(rp = node->address; rp->ai_next != NULL; rp = rp->ai_next);
+
+                if(rp->ai_next != NULL) {
+                        abort();
+                }
+
+                rp->ai_next = address;
+        }
+
+        return ARAKOON_RC_SUCCESS;
+}
+
+arakoon_rc arakoon_cluster_node_add_address_tcp(ArakoonClusterNode *node,
+    const char * const host, const char * const service) {
+        struct addrinfo hints;
+        struct addrinfo *result;
+        int rc = 0;
+
+        FUNCTION_ENTER(arakoon_cluster_node_add_address_tcp);
+
+        ASSERT_NON_NULL_RC(node);
+        ASSERT_NON_NULL_RC(host);
+        ASSERT_NON_NULL_RC(service);
+
+        _arakoon_log_debug("Looking up node %s at %s:%s",
+                _arakoon_cluster_node_get_name(node), host, service);
+
+        memset(&hints, 0, sizeof(struct addrinfo));
+        hints.ai_family = AF_UNSPEC; /* IPv4 and IPv6, whatever */
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags = 0;
+        hints.ai_protocol = 0; /* Any protocol */
+
+        rc = getaddrinfo(host, service, &hints, &result);
+
+        if(rc != 0) {
+                _arakoon_log_error("Address lookup failed: %s",
+                        gai_strerror(rc));
+                return ARAKOON_RC_CLIENT_NETWORK_ERROR;
+        }
+
+        rc = arakoon_cluster_node_add_address(node, result);
+
+        return rc;
+}
+
+arakoon_rc _arakoon_cluster_node_set_cluster(ArakoonClusterNode *node,
+    ArakoonCluster *cluster) {
+        if(node->cluster != NULL) {
+                return -EINVAL;
+        }
+
+        node->cluster = cluster;
+
+        return ARAKOON_RC_SUCCESS;
 }
