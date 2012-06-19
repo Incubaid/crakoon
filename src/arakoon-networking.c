@@ -248,15 +248,18 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
 
         FUNCTION_ENTER(_arakoon_networking_connect);
 
-        timeout_ = *timeout;
-        if(timeout_ <= 0) {
-                return ARAKOON_RC_CLIENT_TIMEOUT;
+        if(with_timeout) {
+                timeout_ = *timeout;
+
+                if(timeout_ <= 0) {
+                        return ARAKOON_RC_CLIENT_TIMEOUT;
+                }
         }
 
         *fd = -1;
 
-        rc = clock_gettime(CLOCK_SOURCE, &start);
-        if(rc != 0) {
+        ret = clock_gettime(CLOCK_SOURCE, &start);
+        if(ret != 0) {
                 return -errno;
         }
 
@@ -367,7 +370,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
         while(1) {
                 if(with_timeout) {
                         ret = clock_gettime(CLOCK_SOURCE, &now);
-                        if(rc != 0) {
+                        if(ret != 0) {
                                 rc = -errno;
 
                                 goto cleanup;
