@@ -29,9 +29,15 @@
 #include "memory.h"
 #include "utils.h"
 
+typedef struct Node Node;
+struct Node {
+        const char *name;
+        ArakoonClusterNode *node;
+        Node *next;
+};
+
 int main(int argc, char **argv) {
         ArakoonCluster *c = NULL;
-        ArakoonClusterNode *node = NULL;
         arakoon_rc rc = 0;
         ArakoonClientCallOptions *options = NULL;
         ArakoonValueList *r0 = NULL, *r2 = NULL;
@@ -44,6 +50,9 @@ int main(int argc, char **argv) {
         char *s0 = NULL, *s1 = NULL;
         ArakoonSequence *seq = NULL;
         int i = 0;
+
+        Node *fst = NULL, *n = NULL, *the_node = NULL;
+        const char *name = NULL;
 
         const ArakoonMemoryHooks hooks = {
                 check_arakoon_malloc,
@@ -73,19 +82,46 @@ int main(int argc, char **argv) {
         ABORT_IF_NULL(c, "arakoon_cluster_new");
 
         for(i = 2; i < argc; i++) {
-                node = arakoon_cluster_node_new(argv[i]);
-                ABORT_IF_NULL(node, "arakoon_cluster_node_new");
+                the_node = NULL;
+                name = argv[i];
 
-                rc = arakoon_cluster_node_add_address_tcp(node, argv[i + 1],
-                        argv[i + 2]);
+                for(n = fst; n != NULL;) {
+                        if(strcmp(n->name, name) == 0) {
+                                the_node = n;
+                                break;
+                        }
+
+                        n = n->next;
+                }
+
+                if(the_node == NULL) {
+                        the_node = check_arakoon_malloc(sizeof(Node));
+                        ABORT_IF_NULL(the_node, "Allocate Node");
+
+                        the_node->node = arakoon_cluster_node_new(name);
+                        ABORT_IF_NULL(the_node->node,
+                                "arakoon_cluster_node_new");
+                        the_node->name = name;
+
+                        the_node->next = fst;
+                        fst = the_node;
+                }
+
+                rc = arakoon_cluster_node_add_address_tcp(the_node->node,
+                        argv[i + 1], argv[i + 2]);
                 ABORT_IF_NOT_SUCCESS(rc,
                         "arakoon_cluster_node_add_address_tcp");
 
-                rc = arakoon_cluster_add_node(c, node);
-                ABORT_IF_NOT_SUCCESS(rc,
-                        "arakoon_cluster_add_node");
-
                 i += 2;
+        }
+
+        for(n = fst; n != NULL;) {
+                rc = arakoon_cluster_add_node(c, n->node);
+                ABORT_IF_NOT_SUCCESS(rc, "arakoon_cluster_add_node");
+
+                the_node = n;
+                n = n->next;
+                check_arakoon_free(the_node);
         }
 
         rc = arakoon_cluster_connect_master(c, options);
