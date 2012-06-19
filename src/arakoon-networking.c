@@ -484,5 +484,19 @@ cleanup:
         arakoon_mem_free(fds);
         arakoon_mem_free(flags);
 
+        if(with_timeout) {
+                ret = clock_gettime(CLOCK_SOURCE, &now);
+                if(ret != 0) {
+                        if(the_socket >= 0) {
+                                close(the_socket);
+                                *fd = -1;
+                        }
+
+                        rc = -errno;
+                }
+
+                *timeout = timeout_ - time_delta(&start, &now);
+        }
+
         return rc;
 }
