@@ -122,7 +122,7 @@ arakoon_rc _arakoon_nursery_routing_parse(size_t length ARAKOON_GNUC_UNUSED,
                 return ARAKOON_RC_CLIENT_NURSERY_INVALID_ROUTING;
         }
 
-        if(iter != data + length) {
+        if(iter != (char *)data + length) {
                 arakoon_nursery_routing_node_free(root);
 
                 for(i = 0; clusters[i] != NULL; i++) {
@@ -182,7 +182,7 @@ static void arakoon_nursery_routing_node_free(ArakoonNurseryRoutingNode *node) {
 
 /* TODO Move into protocol */
 static arakoon_bool _read_bool(const void **data) {
-        const char *b = *data;
+        const char *b = (char *)*data;
 
         *(char **)data += 1;
 
@@ -198,7 +198,7 @@ static uint32_t _read_uint32(const void **data) {
         uint32_t res = 0;
 
         res = *(uint32_t *)(*data);
-        *data += sizeof(uint32_t);
+        *data = (char *)(*data) + sizeof(uint32_t);
 
         return res;
 }
@@ -335,7 +335,7 @@ static const char * _arakoon_nursery_routing_node_lookup(
 
                 case ARAKOON_NURSERY_ROUTING_NODE_INTERNAL:
                         {
-                                if(strncmp(key, node->node.internal.boundary, key_size) < 0) {
+                                if(memcmp(key, node->node.internal.boundary, key_size) < 0) {
                                         return _arakoon_nursery_routing_node_lookup(
                                                 node->node.internal.left, key_size, key);
                                 }

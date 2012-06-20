@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "Unexpected value length: %zu\n", value_length);
                 abort();
         }
-        if(strncmp(TEST_VALUE, value, value_length) != 0) {
+        if(memcmp(TEST_VALUE, value, value_length) != 0) {
                 fprintf(stderr, "Unexpected value\n");
                 abort();
         }

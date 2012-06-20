@@ -175,7 +175,7 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
                         }
                 }
 
-                cnt = action_(fd, data + done, todo);
+                cnt = action_(fd, (char *)data + done, todo);
 
                 if(action == NETWORK_ACTION_WRITE && cnt < 0) {
                         if(errno == EINTR || errno == EAGAIN) {

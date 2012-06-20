@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
                 }
 
                 if(the_node == NULL) {
-                        the_node = check_arakoon_malloc(sizeof(Node));
+                        the_node = (Node *)check_arakoon_malloc(sizeof(Node));
                         ABORT_IF_NULL(the_node, "Allocate Node");
 
                         the_node->node = arakoon_cluster_node_new(name);
@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
         ABORT_IF_NULL(iter0, "arakoon_value_list_create_iter");
 
         FOR_ARAKOON_VALUE_ITER(iter0, &l0, &v0) {
-                s0 = check_arakoon_malloc((l0 + 1) * sizeof(char));
+                s0 = (char *)check_arakoon_malloc((l0 + 1) * sizeof(char));
                 ABORT_IF_NULL(s0, "check_arakoon_malloc");
                 memcpy(s0, v0, l0);
                 s0[l0] = 0;
@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
         ABORT_IF_NULL(iter0, "arakoon_value_list_create_iter");
 
         FOR_ARAKOON_VALUE_ITER(iter0, &l0, &v0) {
-                s0 = check_arakoon_malloc((l0 + 1) * sizeof(char));
+                s0 = (char *)check_arakoon_malloc((l0 + 1) * sizeof(char));
                 ABORT_IF_NULL(s0, "check_arakoon_malloc");
                 memcpy(s0, v0, l0);
                 s0[l0] = 0;
@@ -189,9 +189,9 @@ int main(int argc, char **argv) {
         ABORT_IF_NULL(iter1, "arakoon_key_value_list_create_iter");
 
         FOR_ARAKOON_KEY_VALUE_ITER(iter1, &l0, &v0, &l1, &v1) {
-                s0 = check_arakoon_malloc((l0 + 1) * sizeof(char));
+                s0 = (char *)check_arakoon_malloc((l0 + 1) * sizeof(char));
                 ABORT_IF_NULL(s0, "check_arakoon_malloc");
-                s1 = check_arakoon_malloc((l1 + 1) * sizeof(char));
+                s1 = (char *)check_arakoon_malloc((l1 + 1) * sizeof(char));
                 ABORT_IF_NULL(s1, "check_arakoon_malloc");
                 memcpy(s0, v0, l0);
                 s0[l0] = 0;
@@ -256,9 +256,9 @@ int main(int argc, char **argv) {
         ABORT_IF_NULL(iter1, "arakoon_key_value_list_create_iter");
 
         FOR_ARAKOON_KEY_VALUE_ITER(iter1, &l0, &v0, &l1, &v1) {
-                s0 = check_arakoon_malloc((l0 + 1) * sizeof(char));
+                s0 = (char *)check_arakoon_malloc((l0 + 1) * sizeof(char));
                 ABORT_IF_NULL(s0, "check_arakoon_malloc");
-                s1 = check_arakoon_malloc((l1 + 1) * sizeof(char));
+                s1 = (char *)check_arakoon_malloc((l1 + 1) * sizeof(char));
                 ABORT_IF_NULL(s1, "check_arakoon_malloc");
                 memcpy(s0, v0, l0);
                 s0[l0] = 0;

@@ -238,7 +238,7 @@ char * arakoon_utils_make_string(void *data, size_t length) {
 
         ASSERT_NON_NULL(data);
 
-        s = arakoon_mem_realloc(data, length + 1);
+        s = (char *)arakoon_mem_realloc(data, length + 1);
         if(s == NULL) {
                 arakoon_mem_free(data);
 

@@ -47,12 +47,14 @@
 
 /* Sequences */
 typedef struct ArakoonSequenceItem ArakoonSequenceItem;
+typedef enum {
+        ARAKOON_SEQUENCE_ITEM_TYPE_SET,
+        ARAKOON_SEQUENCE_ITEM_TYPE_DELETE,
+        ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT
+} ArakoonSequenceItemType;
+
 struct ArakoonSequenceItem {
-        enum {
-                ARAKOON_SEQUENCE_ITEM_TYPE_SET,
-                ARAKOON_SEQUENCE_ITEM_TYPE_DELETE,
-                ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT
-        } type;
+        ArakoonSequenceItemType type;
 
         union {
                 struct {
@@ -65,7 +67,7 @@ struct ArakoonSequenceItem {
                 struct {
                         size_t key_size;
                         void * key;
-                } delete;
+                } delete_;
 
                 struct {
                         size_t key_size;
@@ -87,7 +89,7 @@ static void arakoon_sequence_item_free(ArakoonSequenceItem *item) {
                         arakoon_mem_free(item->data.set.value);
                 }; break;
                 case ARAKOON_SEQUENCE_ITEM_TYPE_DELETE: {
-                        arakoon_mem_free(item->data.delete.key);
+                        arakoon_mem_free(item->data.delete_.key);
                 }; break;
                 case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT: {
                         arakoon_mem_free(item->data.assert.key);
@@ -208,7 +210,7 @@ arakoon_rc arakoon_sequence_add_delete(ArakoonSequence *sequence,
 
         OUVERTURE(ARAKOON_SEQUENCE_ITEM_TYPE_DELETE);
 
-        COPY_STRING(delete, key);
+        COPY_STRING(delete_, key);
 
         POSTLUDIUM(arakoon_sequence_add_delete);
 }
@@ -1006,7 +1008,7 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
                                 I(ARAKOON_PROTOCOL_STRING_LEN(item->data.set.value_size));
                         }; break;
                         case ARAKOON_SEQUENCE_ITEM_TYPE_DELETE: {
-                                I(ARAKOON_PROTOCOL_STRING_LEN(item->data.delete.key_size));
+                                I(ARAKOON_PROTOCOL_STRING_LEN(item->data.delete_.key_size));
                         }; break;
                         case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT: {
                                 I(ARAKOON_PROTOCOL_STRING_LEN(item->data.assert.key_size));
@@ -1070,8 +1072,8 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
                                 WRITE_UINT32(1);
                         }; break;
                         case ARAKOON_SEQUENCE_ITEM_TYPE_DELETE: {
-                                WRITE_STRING(item->data.delete.key,
-                                        item->data.delete.key_size);
+                                WRITE_STRING(item->data.delete_.key,
+                                        item->data.delete_.key_size);
                                 WRITE_UINT32(2);
                         }; break;
                         case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT: {

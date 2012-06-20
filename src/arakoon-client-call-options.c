@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include "arakoon.h"
+#include "arakoon-client-call-options.h"
 #include "arakoon-utils.h"
 #include "arakoon-assert.h"
 
