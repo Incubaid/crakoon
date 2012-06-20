@@ -478,7 +478,7 @@ void arakoon_cluster_node_free(ArakoonClusterNode *node);
  */
 arakoon_rc arakoon_cluster_node_add_address(ArakoonClusterNode *node,
     struct addrinfo * const address)
-    ARAKOON_GNUC_NONNULL, ARAKOON_GNUC_WARN_UNUSED;
+    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
 /* Helper around arakoon_cluster_node_add_address
  *
  * This function is a helper arond arakoon_cluster_node_add_addres to easily
