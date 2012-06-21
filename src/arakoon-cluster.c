@@ -29,6 +29,7 @@
 #include "arakoon-assert.h"
 
 struct ArakoonCluster {
+        ArakoonProtocolVersion version;
         char * name;
 
         struct {
@@ -40,11 +41,19 @@ struct ArakoonCluster {
         ArakoonClusterNode * master;
 };
 
-ArakoonCluster * arakoon_cluster_new(const char * const name) {
+ArakoonCluster * arakoon_cluster_new(ArakoonProtocolVersion version,
+    const char * const name) {
         ArakoonCluster *ret = NULL;
         size_t len = 0;
 
         FUNCTION_ENTER(arakoon_cluster_new);
+
+        if(version != ARAKOON_PROTOCOL_VERSION_1) {
+                _arakoon_log_fatal("Unknown protocol version requested");
+
+                errno = EINVAL;
+                return NULL;
+        }
 
         ASSERT_NON_NULL(name);
 
@@ -65,6 +74,7 @@ ArakoonCluster * arakoon_cluster_new(const char * const name) {
         ret->last_error.data = NULL;
         ret->nodes = NULL;
         ret->master = NULL;
+        ret->version = version;
 
         return ret;
 
@@ -274,10 +284,17 @@ ArakoonClusterNode * _arakoon_cluster_get_master(
 }
 
 void _arakoon_cluster_reset_last_error(ArakoonCluster * const cluster) {
-        FUNCTION_ENTER(_arakooon_cluster_reset_error);
+        FUNCTION_ENTER(_arakoon_cluster_reset_error);
 
         cluster->last_error.len = 0;
 
         arakoon_mem_free(cluster->last_error.data);
         cluster->last_error.data = NULL;
+}
+
+ArakoonProtocolVersion _arakoon_cluster_get_protocol_version(
+    const ArakoonCluster * const cluster) {
+        FUNCTION_ENTER(_arakoon_cluster_get_protocol_version);
+
+        return cluster->version;
 }

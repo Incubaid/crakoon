@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
         options = arakoon_client_call_options_new();
         arakoon_client_call_options_set_timeout(options, 400);
 
-        c = arakoon_cluster_new(argv[1]);
+        c = arakoon_cluster_new(ARAKOON_PROTOCOL_VERSION_1, argv[1]);
         ABORT_IF_NULL(c, "arakoon_cluster_new");
 
         for(i = 2; i < argc; i++) {

@@ -74,6 +74,7 @@ arakoon_rc arakoon_nursery_update_routing(ArakoonNursery *nursery,
         void *routing_data = NULL;
         size_t routing_length = 0;
         ArakoonNurseryRouting *routing = NULL;
+        ArakoonProtocolVersion version;
 
         READ_OPTIONS;
         timeout = arakoon_client_call_options_get_timeout(options_);
@@ -81,6 +82,8 @@ arakoon_rc arakoon_nursery_update_routing(ArakoonNursery *nursery,
         FUNCTION_ENTER(arakoon_nursery_update_routing);
 
         ASSERT_NON_NULL_RC(nursery);
+
+        version = _arakoon_cluster_get_protocol_version(nursery->keeper);
 
         if(nursery->routing != NULL) {
                 _arakoon_nursery_routing_free(nursery->routing);
@@ -115,8 +118,8 @@ arakoon_rc arakoon_nursery_update_routing(ArakoonNursery *nursery,
                 return rc;
         }
 
-        rc = _arakoon_nursery_routing_parse(routing_length, routing_data,
-                &routing);
+        rc = _arakoon_nursery_routing_parse(version, routing_length,
+                routing_data, &routing);
         RETURN_IF_NOT_SUCCESS(rc);
 
         arakoon_mem_free(routing_data);

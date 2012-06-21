@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
         arakoon_memory_set_hooks(&hooks);
         arakoon_log_set_handler(arakoon_log_get_stderr_handler());
 
-        keeper = arakoon_cluster_new(argv[1]);
+        keeper = arakoon_cluster_new(ARAKOON_PROTOCOL_VERSION_1, argv[1]);
         ABORT_IF_NULL(keeper, "arakoon_cluster_new");
 
         for(i = 2; i < argc; i++) {

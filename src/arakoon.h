@@ -493,6 +493,10 @@ arakoon_rc arakoon_cluster_node_add_address_tcp(ArakoonClusterNode *node,
     ARAKOON_GNUC_NONNULL3(1, 2, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 
+typedef enum {
+        ARAKOON_PROTOCOL_VERSION_1
+} ArakoonProtocolVersion;
+
 /* ArakoonCluster */
 typedef struct ArakoonCluster ArakoonCluster;
 
@@ -500,7 +504,8 @@ typedef struct ArakoonCluster ArakoonCluster;
  *
  * The given name will be copied and released in arakoon_cluster_free
  */
-ArakoonCluster * arakoon_cluster_new(const char * const name)
+ArakoonCluster * arakoon_cluster_new(ArakoonProtocolVersion version,
+    const char * const name)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_MALLOC
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
 /* Release an ArakoonCluster

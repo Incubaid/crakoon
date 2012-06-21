@@ -71,7 +71,8 @@ static void arakoon_nursery_routing_node_free(ArakoonNurseryRoutingNode *node);
 static ArakoonNurseryRoutingNode * arakoon_nursery_routing_parse_node(
     const void **data);
 static arakoon_rc arakoon_nursery_routing_parse_clusters(
-    const void **data, ArakoonCluster ***result);
+    ArakoonProtocolVersion version, const void **data,
+    ArakoonCluster ***result);
 
 void _arakoon_nursery_routing_free(ArakoonNurseryRouting *routing) {
         int i = 0;
@@ -88,8 +89,9 @@ void _arakoon_nursery_routing_free(ArakoonNurseryRouting *routing) {
         arakoon_mem_free(routing);
 }
 
-arakoon_rc _arakoon_nursery_routing_parse(size_t length ARAKOON_GNUC_UNUSED,
-        const void *data, ArakoonNurseryRouting **routing) {
+arakoon_rc _arakoon_nursery_routing_parse(
+    ArakoonProtocolVersion version, size_t length ARAKOON_GNUC_UNUSED,
+    const void *data, ArakoonNurseryRouting **routing) {
         arakoon_rc rc = 0;
         ArakoonNurseryRouting *ret = NULL;
         ArakoonNurseryRoutingNode *root = NULL;
@@ -106,7 +108,7 @@ arakoon_rc _arakoon_nursery_routing_parse(size_t length ARAKOON_GNUC_UNUSED,
                 return ARAKOON_RC_CLIENT_NURSERY_INVALID_ROUTING;
         }
 
-        rc = arakoon_nursery_routing_parse_clusters(&iter, &clusters);
+        rc = arakoon_nursery_routing_parse_clusters(version, &iter, &clusters);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 if(*clusters == NULL) {
                         for(i = 0; clusters[i] != NULL; i++) {
@@ -254,7 +256,8 @@ static ArakoonNurseryRoutingNode * arakoon_nursery_routing_parse_node(
 
 #define UINT32_MAX_LENGTH (10)
 static arakoon_rc arakoon_nursery_routing_parse_clusters(
-    const void **data, ArakoonCluster *** result) {
+    ArakoonProtocolVersion version, const void **data,
+    ArakoonCluster *** result) {
         uint32_t count = 0;
         ArakoonCluster **ret = NULL;
         ArakoonClusterNode *node = NULL;
@@ -276,7 +279,7 @@ static arakoon_rc arakoon_nursery_routing_parse_clusters(
                 cluster_id = _read_string(data);
                 cluster_size = _read_uint32(data);
 
-                cluster = arakoon_cluster_new(cluster_id);
+                cluster = arakoon_cluster_new(version, cluster_id);
                 arakoon_mem_free(cluster_id);
 
                 ret[i] = cluster;
@@ -322,6 +325,8 @@ failure:
         }
 
         arakoon_mem_free(ret);
+
+        *ret = NULL;
 
         return rc;
 }

@@ -103,7 +103,7 @@ START_TEST(test_arakoon_memory_set_hooks_usage) {
 
         arakoon_memory_set_hooks(&hooks);
 
-        c = arakoon_cluster_new("test");
+        c = arakoon_cluster_new(ARAKOON_PROTOCOL_VERSION_1, "test");
         fail_unless(check_arakoon_last_malloc_address() ==
                 arakoon_cluster_get_name(c), NULL);
 

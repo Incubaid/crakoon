@@ -33,6 +33,8 @@ ARAKOON_BEGIN_DECLS
 
 ArakoonClusterNode * _arakoon_cluster_get_master(
     const ArakoonCluster * const cluster);
+ArakoonProtocolVersion _arakoon_cluster_get_protocol_version(
+    const ArakoonCluster * const cluster) ARAKOON_GNUC_NONNULL;
 
 #define ARAKOON_CLUSTER_GET_MASTER(c, m)                \
         STMT_START                                      \

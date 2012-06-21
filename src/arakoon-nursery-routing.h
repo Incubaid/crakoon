@@ -31,8 +31,9 @@ ARAKOON_BEGIN_DECLS
 typedef struct ArakoonNurseryRouting ArakoonNurseryRouting;
 
 arakoon_rc _arakoon_nursery_routing_parse(
+    ArakoonProtocolVersion version,
     size_t length, const void *data, ArakoonNurseryRouting **routing)
-    ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_NONNULL2(2, 3);
+    ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_NONNULL2(3, 4);
 
 void _arakoon_nursery_routing_free(ArakoonNurseryRouting *routing);
 
