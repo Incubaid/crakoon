@@ -616,10 +616,11 @@ cluster_node::disown()
 //// cluster
 
 cluster::cluster(
+    ArakoonProtocolVersion version,
     std::string const & cluster_name)
     :   cluster_(NULL)
 {
-    cluster_ = arakoon_cluster_new(cluster_name.c_str());
+    cluster_ = arakoon_cluster_new(version, cluster_name.c_str());
     if (cluster_ == NULL)
     {
         throw std::bad_alloc();

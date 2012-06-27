@@ -294,7 +294,7 @@ class cluster_node
 class cluster
 {
   public:
-    cluster(std::string const & cluster_name);
+    cluster(ArakoonProtocolVersion version, std::string const & cluster_name);
 
     ~cluster();
 
