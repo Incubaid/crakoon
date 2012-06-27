@@ -61,6 +61,7 @@ arakoon_range_entries
 arakoon_prefix
 arakoon_test_and_set
 arakoon_sequence
+arakoon_synced_sequence
 arakoon_assert
 arakoon_rev_range_entries
 arakoon_library_version_info
