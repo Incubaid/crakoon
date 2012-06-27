@@ -854,6 +854,8 @@ cluster::rev_range_entries(
         (end_key_included ? ARAKOON_BOOL_TRUE : ARAKOON_BOOL_FALSE),
         max_elements,
         &result));
+
+    return key_value_list_const_ptr(new key_value_list(result));
 }
 
 value_list_const_ptr
