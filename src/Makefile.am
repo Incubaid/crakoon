@@ -32,7 +32,7 @@ libarakoonmm_1_0_la_LDFLAGS = \
 libarakoonmm_1_0_includedir=$(includedir)/arakoon-1.0/arakoon
 libarakoonmm_1_0_include_HEADERS = arakoonmm.hpp
 libarakoonmm_1_0_la_LIBADD = -larakoon-1.0
-libarakoonmm_1_0_la_CXXFLAGS = -std=gnu++0x $(CFLAGS)
+libarakoonmm_1_0_la_CXXFLAGS = -std=c++11 $(CFLAGS)
 
 AM_CPPFLAGS = $(CRAKOON_DEBUG_FLAGS) $(CRAKOON_ASSERT_FLAGS) \
 	      -DCRAKOON_MAJOR_VERSION=$(CRAKOON_MAJOR_VERSION) \

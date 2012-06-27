@@ -168,7 +168,11 @@ typedef int arakoon_rc;
 /* Check whether a given arakoon_rc value is an errno value */
 #define ARAKOON_RC_IS_ERRNO(n) (n < 0)
 /* Convert and cast an arakoon_rc value to the corresponding (positive!) errno value */
-#define ARAKOON_RC_AS_ERRNO(n) ((typeof(errno))(-n))
+#ifndef __cplusplus /* C++ doesn't like typeof */
+# define ARAKOON_RC_AS_ERRNO(n) ((typeof(errno))(-n))
+#else /* C++ hack. According to 'man 3 errno', errno is an integer */
+# define ARAKOON_RC_AS_ERRNO(n) ((int)(-n))
+#endif
 /*Check whether a given arakoon_rc value denotes success */
 #define ARAKOON_RC_IS_SUCCESS(n) (ARAKOON_GNUC_LIKELY(n == 0))
 /* Check whether a given arakoon_rc value is an ArakoonReturnCode */
