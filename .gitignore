@@ -15,6 +15,7 @@ Makefile
 Makefile.in
 aclocal.m4
 arakoon-1.0.pc
+arakoonmm-1.0.pc
 autom4te.cache/
 autoscan.log
 compile

@@ -334,6 +334,7 @@ AC_CONFIG_FILES([
          src/Makefile
          tests/Makefile
          arakoon-1.0.pc
+         arakoonmm-1.0.pc
 ])
 
 AC_OUTPUT
