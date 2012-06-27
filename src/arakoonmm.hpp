@@ -1,7 +1,7 @@
 /*
 * This file is part of Arakoon, a distributed key-value store.
 *
-* Copyright (C) 2010, 2012 Incubaid BVBA
+* Copyright (C) 2012 Incubaid BVBA
 *
 * Licensees holding a valid Incubaid license may use this file in
 * accordance with Incubaid's Arakoon commercial license agreement. For
