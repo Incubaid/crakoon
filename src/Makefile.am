@@ -1,4 +1,5 @@
-lib_LTLIBRARIES = libarakoon-1.0.la
+lib_LTLIBRARIES = libarakoon-1.0.la libarakoonmm-1.0.la
+
 libarakoon_1_0_la_SOURCES = arakoon.c arakoon.h \
 			    arakoon-networking.c arakoon-networking.h \
 			    arakoon-nursery.c arakoon-nursery.h \
@@ -20,6 +21,18 @@ libarakoon_1_0_la_LDFLAGS = \
 libarakoon_1_0_includedir=$(includedir)/arakoon-1.0/arakoon
 libarakoon_1_0_include_HEADERS = arakoon.h arakoon-nursery.h
 libarakoon_1_0_la_LIBADD = -lrt
+
+
+libarakoonmm_1_0_la_SOURCES = arakoonmm.cpp arakoonmm.hpp \
+			      arakoon.h
+libarakoonmm_1_0_la_LDFLAGS = \
+	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
+	-export-dynamic $(no_undefined) \
+	$(HARDEN_LDFLAGS)
+libarakoonmm_1_0_includedir=$(includedir)/arakoon-1.0/arakoon
+libarakoonmm_1_0_include_HEADERS = arakoonmm.hpp
+libarakoonmm_1_0_la_LIBADD = -larakoon-1.0
+libarakoonmm_1_0_la_CXXFLAGS = -std=gnu++0x $(CFLAGS)
 
 AM_CPPFLAGS = $(CRAKOON_DEBUG_FLAGS) $(CRAKOON_ASSERT_FLAGS) \
 	      -DCRAKOON_MAJOR_VERSION=$(CRAKOON_MAJOR_VERSION) \
