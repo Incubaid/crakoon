@@ -898,4 +898,11 @@ cluster::sequence(
     rc_to_error(arakoon_sequence(cluster_, options.get(), sequence.get()));
 }
 
+void cluster::synced_sequence(
+    client_call_options const & options,
+    arakoon::sequence const & sequence)
+{
+    rc_to_error(arakoon_synced_sequence(cluster_, options.get(), sequence.get()));
+}
+
 } // namespace arakoon

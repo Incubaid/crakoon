@@ -376,6 +376,10 @@ class cluster
         client_call_options const & options,
         arakoon::sequence const & sequence);
 
+    void synced_sequence(
+        client_call_options const & options,
+        arakoon::sequence const & sequence);
+
   private:
     void rc_to_error(rc const rc);
 
