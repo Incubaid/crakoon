@@ -969,7 +969,8 @@ arakoon_rc arakoon_test_and_set(ArakoonCluster *cluster,
         return rc;
 }
 
-arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
+static arakoon_rc _arakoon_sequence_impl(char code,
+    ArakoonCluster *cluster,
     const ArakoonClientCallOptions * const options,
     const ArakoonSequence * const sequence) {
         size_t len = 0, i = 0;
@@ -980,7 +981,7 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
         ArakoonClusterNode *master = NULL;
         int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
 
-        FUNCTION_ENTER(arakoon_sequence);
+        FUNCTION_ENTER(_arakoon_sequence_impl);
 
         _arakoon_cluster_reset_last_error(cluster);
 
@@ -1112,7 +1113,7 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
                 abort();
         }
 
-        ARAKOON_PROTOCOL_WRITE_COMMAND(command, 0x10, 0x00);
+        ARAKOON_PROTOCOL_WRITE_COMMAND(command, code, 0x00);
         /* Macro changes our pointer... */
         command -= ARAKOON_PROTOCOL_COMMAND_LEN;
 
@@ -1124,6 +1125,22 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
         HANDLE_ERROR(rc, master, cluster, &timeout);
 
         return rc;
+}
+
+arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const ArakoonSequence * const sequence) {
+        FUNCTION_ENTER(arakoon_sequence);
+
+        return _arakoon_sequence_impl(0x10, cluster, options, sequence);
+}
+
+arakoon_rc arakoon_synced_sequence(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const ArakoonSequence * const sequence) {
+        FUNCTION_ENTER(arakoon_synced_sequence);
+
+        return _arakoon_sequence_impl(0x24, cluster, options, sequence);
 }
 
 arakoon_rc arakoon_assert(ArakoonCluster *cluster,

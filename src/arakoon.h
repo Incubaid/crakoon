@@ -689,6 +689,11 @@ arakoon_rc arakoon_sequence(ArakoonCluster *cluster,
     const ArakoonClientCallOptions * const options,
     const ArakoonSequence * const sequence)
     ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'synced_sequence' call to the server */
+arakoon_rc arakoon_synced_sequence(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const ArakoonSequence * const sequence)
+    ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 /* Send an 'assert' call to the server
  *
  * 'value' can be NULL to denote 'None', in which case 'size' should be 0 as
