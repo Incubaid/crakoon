@@ -21,8 +21,8 @@ m4_define(crakoon_configure_ac)
 
 m4_define([crakoon_major_version], [1])
 m4_define([crakoon_minor_version], [0])
-m4_define([crakoon_micro_version], [0])
-m4_define([crakoon_interface_age], [0])
+m4_define([crakoon_micro_version], [1])
+m4_define([crakoon_interface_age], [1])
 m4_define([crakoon_binary_age],
           [m4_eval(100 * crakoon_minor_version + crakoon_micro_version)])
 m4_define([crakoon_version],
