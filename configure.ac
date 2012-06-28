@@ -335,6 +335,7 @@ AC_CONFIG_FILES([
          tests/Makefile
          arakoon-1.0.pc
          arakoonmm-1.0.pc
+         Doxyfile
 ])
 
 AC_OUTPUT
