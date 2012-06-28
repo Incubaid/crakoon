@@ -103,6 +103,7 @@ dnl Initialize maintainer mode
 AM_MAINTAINER_MODE
 
 AC_PROG_CC
+AC_PROG_CXX
 
 # We want to check for compiler flag support, but there is no way to make
 # clang's "argument unused" warning fatal.  So we invoke the compiler through a
@@ -333,6 +334,7 @@ AC_CONFIG_FILES([
          src/Makefile
          tests/Makefile
          arakoon-1.0.pc
+         arakoonmm-1.0.pc
 ])
 
 AC_OUTPUT
