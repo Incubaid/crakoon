@@ -30,13 +30,16 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-/* Conventions
+/**
+ * \mainpage
+ *
+ * Conventions
  * ===========
  * Strings
  * -------
  * We use 2 types of string-like values in Crakoon: null-terminated C-strings,
- * using "char *" as type, and plain chunks of memory, encoded as a pointer to
- * this memory ("void *"), and the value size ("size_t"). Whenever we're
+ * using `char *` as type, and plain chunks of memory, encoded as a pointer to
+ * this memory (`void *`), and the value size (`size_t`). Whenever we're
  * dealing with human-readable strings, the first encoding is used (e.g. when
  * dealing with cluster or node names). Generic byte sequences, e.g. keys or
  * values, are encoded using the second system.
@@ -44,40 +47,41 @@
  * Memory handling
  * ---------------
  * The memory handling procedures to be used by Crakoon can be set through
- * arakoon_memory_set_hooks. The malloc, free and realloc functions can be
+ * arakoon_memory_set_hooks. The `malloc`, `free` and `realloc` functions can be
  * specified. Crakoon should not use any other heap-allocation functions.
  *
- * The system malloc(3), free(3) and realloc(3) procedures are used as default.
+ * The system *malloc(3)*, *free(3)* and *realloc(3)* procedures are used as default.
  * If possible, it is advisable to register your own heap allocation handler
  * functions before calling any other Crakoon procedures.
  *
- * Whenever an allocation fails (malloc or realloc returned NULL), this is
- * returned as-is to the caller, by returning NULL in case the procedure returns
- * a pointer, or -ENOMEM if an arakoon_rc value is returned. When allocation
+ * Whenever an allocation fails (`malloc` or `realloc` returned `NULL`), this is
+ * returned as-is to the caller, by returning `NULL` in case the procedure returns
+ * a pointer, or `-ENOMEM` if an #arakoon_rc value is returned. When allocation
  * fails, any out-pointers should be set to NULL as well, although one should
- * not rely on this behaviour (always check the arakoon_rc value).
+ * not rely on this behaviour (always check the #arakoon_rc value).
  *
  * If you're not interested in handling out-of-memory situations and want to
- * abort on allocation failure, you can register simple wrappers around malloc
- * and realloc which e.g. call abort(3) on failure.
+ * abort on allocation failure, you can register simple wrappers around `malloc`
+ * and `realloc` which e.g. call *abort(3)* on failure.
  *
  * Error handling
  * --------------
- * Most procedures return an arakoon_rc value, which is an integer value. If
- * this value is negative, it's an errno value. If it is equal to 0, it
- * signifies success. A positive value is part of the ArakoonReturnCode
+ * Most procedures return an #arakoon_rc value, which is an integer value. If
+ * this value is negative, it's an *errno* value. If it is equal to 0, it
+ * signifies success. A positive value is part of the #ArakoonReturnCode
  * enumeration.
  *
- * You can (and should!) use the ARAKOON_RC_IS_ERRNO, ARAKOON_RC_AS_ERRNO,
- * ARAKOON_RC_IS_SUCCESS, ARAKOON_RC_IS_ARAKOONRETURNCODE and
- * ARAKOON_RC_AS_ARAKOONRETURNCODE macros to handle arakoon_rc values.
+ * You can (and should!) use the #ARAKOON_RC_IS_ERRNO, #ARAKOON_RC_AS_ERRNO,
+ * ARAKOON_RC_IS_SUCCESS, #ARAKOON_RC_IS_ARAKOONRETURNCODE and
+ * ARAKOON_RC_AS_ARAKOONRETURNCODE macros to handle #arakoon_rc values.
  *
- * The arakoon_strerror procedure can be used to turn an arakoon_rc value into a
- * human-readable message. For errno values, the strerror(3) function is called,
- * so the caveats related to using this function apply to arakoon_strerror as
+ * The #arakoon_strerror procedure can be used to turn an #arakoon_rc value into a
+ * human-readable message. For *errno* values, the *strerror(3)* function is called,
+ * so the caveats related to using this function apply to #arakoon_strerror as
  * well.
  */
 
+/** \cond */
 #ifdef  __cplusplus
 # define ARAKOON_BEGIN_DECLS \
     extern "C" {
@@ -135,57 +139,112 @@
 # define ARAKOON_GNUC_UNLIKELY(expr) (expr)
 #endif
 
+/** \endcond */
+
 ARAKOON_BEGIN_DECLS
 
-/* Return code values contained in arakoon_rc variables, if non-negative */
+/** \defgroup ResultCodes Result code handling
+ * @{
+ */
+/**
+ * \brief Return code values contained in #arakoon_rc variables, if non-negative
+ *
+ * All *ARAKOON_RC_CLIENT_\** values are client-side errors. Others are error
+ * codes returned by the Arakoon server.
+ *
+ * \since 1.0
+ */
 typedef enum {
     /* These are returned from the server */
-    ARAKOON_RC_SUCCESS = 0, /* Success */
-    ARAKOON_RC_NO_MAGIC = 1, /* No magic applied to given command */
-    ARAKOON_RC_TOO_MANY_DEAD_NODES = 2, /* Too many dead nodes */
-    ARAKOON_RC_NO_HELLO = 3, /* No hello received from client */
-    ARAKOON_RC_NOT_MASTER = 4, /* Node is not the master */
-    ARAKOON_RC_NOT_FOUND = 5, /* Not found */
-    ARAKOON_RC_WRONG_CLUSTER = 6, /* An invalid cluster name was specified */
-    ARAKOON_RC_ASSERTION_FAILED = 7, /* An assertion failed */
-    ARAKOON_RC_READ_ONLY = 8, /* Node is in read-only mode */
-    ARAKOON_RC_NURSERY_RANGE_ERROR = 9, /* Nursery range error */
-    ARAKOON_RC_UNKNOWN_FAILURE = 0xff, /* An unknown failure occurred */
+    ARAKOON_RC_SUCCESS = 0, /**< Success */
+    ARAKOON_RC_NO_MAGIC = 1, /**< No magic applied to given command */
+    ARAKOON_RC_TOO_MANY_DEAD_NODES = 2, /**< Too many dead nodes */
+    ARAKOON_RC_NO_HELLO = 3, /**< No hello received from client */
+    ARAKOON_RC_NOT_MASTER = 4, /**< Node is not the master */
+    ARAKOON_RC_NOT_FOUND = 5, /**< Not found */
+    ARAKOON_RC_WRONG_CLUSTER = 6, /**< An invalid cluster name was specified */
+    ARAKOON_RC_ASSERTION_FAILED = 7, /**< An assertion failed */
+    ARAKOON_RC_READ_ONLY = 8, /**< Node is in read-only mode */
+    ARAKOON_RC_NURSERY_RANGE_ERROR = 9, /**< Nursery range error */
+    ARAKOON_RC_UNKNOWN_FAILURE = 0xff, /**< An unknown failure occurred */
 
     /* Internal client errors */
-    ARAKOON_RC_CLIENT_NETWORK_ERROR = 0x0100, /* A client-side network error occurred */
-    ARAKOON_RC_CLIENT_UNKNOWN_NODE = 0x0200, /* An unknown node name was received */
-    ARAKOON_RC_CLIENT_MASTER_NOT_FOUND = 0x0300, /* The master node could not be determined */
-    ARAKOON_RC_CLIENT_NOT_CONNECTED = 0x0400, /* The client is not connected to a master node */
-    ARAKOON_RC_CLIENT_TIMEOUT = 0x0500, /* A timeout was reached */
-    ARAKOON_RC_CLIENT_NURSERY_INVALID_ROUTING = 0x0600, /* Unable to parse routing information */
-    ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG = 0x0700 /* Invalid client config (needs update?) */
+    ARAKOON_RC_CLIENT_NETWORK_ERROR = 0x0100, /**< A client-side network error occurred */
+    ARAKOON_RC_CLIENT_UNKNOWN_NODE = 0x0200, /**< An unknown node name was received */
+    ARAKOON_RC_CLIENT_MASTER_NOT_FOUND = 0x0300, /**< The master node could not be determined */
+    ARAKOON_RC_CLIENT_NOT_CONNECTED = 0x0400, /**< The client is not connected to a master node */
+    ARAKOON_RC_CLIENT_TIMEOUT = 0x0500, /**< A timeout was reached */
+    ARAKOON_RC_CLIENT_NURSERY_INVALID_ROUTING = 0x0600, /**< Unable to parse routing information */
+    ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG = 0x0700 /**< Invalid client config (needs update?) */
 
 } ArakoonReturnCode;
 
+/**
+ * \brief Status code type used throughout the API
+ *
+ * Values of type arakoon_rc denote one of the #ArakoonReturnCode codes if
+ * positive or zero, or an errno value if negative.
+ *
+ * \ingroup ErrorHandling
+ * \since 1.0
+ */
 typedef int arakoon_rc;
 
-/* Check whether a given arakoon_rc value is an errno value */
+/**
+ * \brief Check whether a given #arakoon_rc value is an *errno* value
+ *
+ * \since 1.0
+ */
 #define ARAKOON_RC_IS_ERRNO(n) (n < 0)
-/* Convert and cast an arakoon_rc value to the corresponding (positive!) errno value */
+/**
+ * \brief Convert and cast an #arakoon_rc value to the corresponding (positive!) *errno* value
+ *
+ * \since 1.0
+ */
 #ifndef __cplusplus /* C++ doesn't like typeof */
 # define ARAKOON_RC_AS_ERRNO(n) ((typeof(errno))(-n))
 #else /* C++ hack. According to 'man 3 errno', errno is an integer */
 # define ARAKOON_RC_AS_ERRNO(n) ((int)(-n))
 #endif
-/*Check whether a given arakoon_rc value denotes success */
+/**
+ * \brief Check whether a given #arakoon_rc value denotes success
+ *
+ * \since 1.0
+ */
 #define ARAKOON_RC_IS_SUCCESS(n) (ARAKOON_GNUC_LIKELY(n == 0))
-/* Check whether a given arakoon_rc value is an ArakoonReturnCode */
+/**
+ * \brief Check whether a given #arakoon_rc value is an #ArakoonReturnCode
+ *
+ * \since 1.0
+ */
 #define ARAKOON_RC_IS_ARAKOONRETURNCODE(n) (n >= 0)
-/* Convert and cast an arakoon_rc value into an ArakoonReturnCode */
+/**
+ * \brief Convert and cast an #arakoon_rc value into an #ArakoonReturnCode
+ *
+ * \since 1.0
+ */
 #define ARAKOON_RC_AS_ARAKOONRETURNCODE(n) ((ArakoonReturnCode) n)
 
-/* Turn an arakoon_rc value into a human-readable string representation
+/**
+ * \brief Turn an #arakoon_rc value into a human-readable string representation
  *
- * This uses strerror(3) internally when arakoon_rc is an errno value. The
- * corresponding caveats apply.
+ * This uses *strerror(3)* internally when the argument is an *errno* value.
+ * The corresponding caveats apply.
+ *
+ * \param n status code to represent
+ *
+ * \return Human-readable string for the given status code
+ *
+ * \since 1.0
  */
 const char * arakoon_strerror(arakoon_rc n);
+
+/** @} */
+
+
+/** \defgroup utils Utilities
+ * @{
+ */
 
 /* Utility stuff */
 typedef char arakoon_bool;
@@ -193,50 +252,102 @@ typedef char arakoon_bool;
 #define ARAKOON_BOOL_FALSE (0)
 
 /* Library version information */
-/* Retrieve the major version number of the library */
-unsigned int arakoon_library_version_major(void) ARAKOON_GNUC_CONST;
-/* Retrieve the minor version number of the library */
-unsigned int arakoon_library_version_minor(void) ARAKOON_GNUC_CONST;
-/* Retrieve the micro version number of the library */
-unsigned int arakoon_library_version_micro(void) ARAKOON_GNUC_CONST;
-/* Retrieve a human-readable version string of the library
+/**
+ * \brief Retrieve the major version number of the library
  *
- * Don't assume any formatting of this string, it could contain anything at
+ * \since 1.0
+ */
+unsigned int arakoon_library_version_major(void) ARAKOON_GNUC_CONST;
+/**
+ * \brief Retrieve the minor version number of the library
+ *
+ * \since 1.0
+ */
+unsigned int arakoon_library_version_minor(void) ARAKOON_GNUC_CONST;
+/**
+ * \brief Retrieve the micro version number of the library
+ *
+ * \since 1.0
+ */
+unsigned int arakoon_library_version_micro(void) ARAKOON_GNUC_CONST;
+/**
+ * \brief Retrieve a human-readable version string of the library
+ *
+ * \note Don't assume any formatting of this string, it could contain anything at
  * all.
+ *
+ * \since 1.0
  */
 const char * arakoon_library_version_info(void) ARAKOON_GNUC_CONST;
 
-/* Turn a generic byte sequence into a C-string
+/**
+ * \brief Turn a generic byte sequence into a C-string
  *
  * This procedure turns a given data blob into a null-terminated C-string. The
- * allocated string is returned. A call to realloc is used to achieve this, so
+ * allocated string is returned. A call to `realloc` is used to achieve this, so
  * the original data pointer will be invalid after calling this procedure.
  *
  * The caller is in charge of releasing the returned memory.
+ *
+ * \param data pointer to the string data
+ * \param length length of the string
+ *
+ * \return Null-terminated string version of the original data
+ *
+ * \since 1.0
  */
 char * arakoon_utils_make_string(void *data, size_t length)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
+/** @} */
+
+
+/** \defgroup MemoryHandling Memory handling
+ * @{
+ */
+
 /* Memory handling */
-/* A vtable containing function pointers to be used for heap management */
+/**
+ * \brief A vtable containing function pointers to be used for heap management
+ *
+ * \since 1.0
+ */
 typedef struct {
-    void * (*malloc) (size_t size); /* malloc(3) */
-    void (*free) (void *ptr); /* free(3) */
-    void * (*realloc) (void *ptr, size_t size); /* realloc(3) */
+    void * (*malloc) (size_t size); /**< *malloc(3)* */
+    void (*free) (void *ptr); /**< *free(3)* */
+    void * (*realloc) (void *ptr, size_t size); /**< *realloc(3)* */
 } ArakoonMemoryHooks;
 
-/* Register memory-management functions to be used by Crakoon */
+/**
+ * \brief Register memory-management functions to be used by Crakoon
+ *
+ * \param hooks heap management hooks to use inside the library
+ *
+ * \since 1.0
+ */
 arakoon_rc arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks)
     ARAKOON_GNUC_NONNULL;
-/* Retrieve an ArakoonMemoryHooks table containing wrappers around the system
- * malloc(3) and realloc(3) which abort() on allocation failure. Pass this to
- * arakoon_memory_set_hooks in case you don't bother handling heap management
- * failures (i.e. don't want to care about NULL checks or ENOMEM) and just die.
+/**
+ * Retrieve an #ArakoonMemoryHooks table containing wrappers around the system
+ * *malloc(3)* and *realloc(3)* which `abort()` on allocation failure. Pass
+ * this to #arakoon_memory_set_hooks in case you don't bother handling heap
+ * management failures (i.e. don't want to care about `NULL` checks or
+ * `ENOMEM`) and just die.
+ *
+ * \since 1.0
  */
 const ArakoonMemoryHooks * arakoon_memory_get_abort_hooks(void);
 
-/* Logging */
-/* Enumeration of log levels */
+/** @} */
+
+/** \defgroup Logging
+ * @{
+ */
+/**
+ * \brief Enumeration of log levels
+ *
+ * \since 1.0
+ */
 typedef enum {
     ARAKOON_LOG_TRACE,
     ARAKOON_LOG_DEBUG,
@@ -246,68 +357,127 @@ typedef enum {
     ARAKOON_LOG_FATAL
 } ArakoonLogLevel;
 
-/* Log handler callback prototype */
+/**
+ * \brief Log handler callback prototype
+ *
+ * \since 1.0
+ */
 typedef void (*ArakoonLogHandler) (ArakoonLogLevel level,
     const char * message);
 
-/* Set a log message handler procedure */
+/**
+ * \brief Set a log message handler procedure
+ *
+ * \since 1.0
+ */
 void arakoon_log_set_handler(const ArakoonLogHandler handler);
-/* A handler which logs all messages to stderr */
+/**
+ * \brief A handler which logs all messages to stderr
+ *
+ * \since 1.0
+ */
 ArakoonLogHandler arakoon_log_get_stderr_handler(void);
 
-/* Value list
+/** @} */
+
+/** \defgroup DataStructures Data structures
  *
- * The list can be iterated and should be free'd when done (or whenever
- * seems fit).
+ * \brief Some generic data structures used throughout the API.
+ *
+ * @{
+ */
+
+/** \defgroup ValueList Value lists
+ * @{
+ */
+/**
+ * \brief Abstract representation of a value list
+ *
+ * \since 1.0
  */
 typedef struct ArakoonValueList ArakoonValueList;
-/* Create a new ArakoonValueList
+/**
+ * \brief Create a new #ArakoonValueList
  *
- * The list should be released using arakoon_value_list_free when no longer
+ * The list should be released using #arakoon_value_list_free when no longer
  * needed.
+ *
+ * \since 1.0
  */
 ArakoonValueList * arakoon_value_list_new(void)
     ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_MALLOC;
-/* Add a value to the list (at the tail) 
+/**
+ * \brief Add a value to the list (at the tail)
  *
- * The given value is copied and will be freed when arakoon_value_list_free is
+ * The given value is copied and will be freed when #arakoon_value_list_free is
  * used.
+ *
+ * \since 1.0
  */
 arakoon_rc arakoon_value_list_add(ArakoonValueList *list,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_NONNULL2(1, 3);
-/* Retrieve the number of items in the list */
+/**
+ * \brief Retrieve the number of items in the list
+ *
+ * \since 1.0
+ */
 ssize_t arakoon_value_list_size(const ArakoonValueList * const list)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
-/* Free a value list
+/**
+ * \brief Free a value list
  *
- * Note: any iters over the list will become invalid after this call.
+ * \note Any iters over the list will become invalid after this call.
+ *
+ * \since 1.0
  */
 void arakoon_value_list_free(ArakoonValueList * const list);
 
+/**
+ * \brief Abstract representation of an #ArakoonValueList iterator
+ *
+ * \since 1.0
+ */
 typedef struct ArakoonValueListIter ArakoonValueListIter;
-/* Create an iter for the given value list */
+/**
+ * \brief Create an iter for the given value list
+ *
+ * \since 1.0
+ */
 ArakoonValueListIter * arakoon_value_list_create_iter(
     const ArakoonValueList * const list)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT
     ARAKOON_GNUC_MALLOC;
-/* Release an iter */
-void arakoon_value_list_iter_free(ArakoonValueListIter * const iter);
-/* Retrieve the next item
+/**
+ * \brief Release an #ArakoonValueListIter
  *
- * value will point to NULL when the last item was reached.
+ * \since 1.0
+ */
+void arakoon_value_list_iter_free(ArakoonValueListIter * const iter);
+/**
+ * \brief Retrieve the next item
+ *
+ * `value` will point to `NULL` when the last item was reached.
+ *
+ * \since 1.0
  */
 arakoon_rc arakoon_value_list_iter_next(ArakoonValueListIter * const iter,
     size_t * const value_size, const void ** const value)
     ARAKOON_GNUC_NONNULL;
-/* Reset the list cursor to the first entry */
+/**
+ * \brief Reset the list cursor to the first entry
+ *
+ * \since 1.0
+ */
 arakoon_rc arakoon_value_list_iter_reset(ArakoonValueListIter * const iter)
     ARAKOON_GNUC_NONNULL;
 
-/* Helper to map over an ArakoonValueList
+/**
+ * \brief Helper to map over an #ArakoonValueList
  *
  * Example usage:
  *
+ * \code
  * const void * v = NULL;
  * size_t l = 0;
  * ArakoonValueIter *iter = NULL;
@@ -316,39 +486,99 @@ arakoon_rc arakoon_value_list_iter_reset(ArakoonValueListIter * const iter)
  * FOR_ARAKOON_VALUE_ITER(iter, &l, &v) {
  *     do_something(l, v);
  * }
+ * \endcode
+ *
+ * \since 1.0
  */
 #define FOR_ARAKOON_VALUE_ITER(i, l, v)        \
     for(arakoon_value_list_iter_next(i, l, v); \
-        *v != NULL;                             \
+        *v != NULL;                            \
         arakoon_value_list_iter_next(i, l, v))
+/** @} */
 
-/* Key Value list
- * Same as ValueList, but with pairs of values, sort-of
+/** \defgroup KeyValueList Key-value lists
+ *
+ * \brief Similar to \ref ValueList "ValueLists", but with pairs of values, sort-of
+ *
+ * @{
+ */
+/**
+ * \brief Abstract representation of a key-value list
+ *
+ * \since 1.0
  */
 typedef struct ArakoonKeyValueList ArakoonKeyValueList;
+/**
+ * \brief Retrieve the number of items in the list
+ *
+ * \since 1.0
+ */
 ssize_t arakoon_key_value_list_size(const ArakoonKeyValueList * const list)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
+/**
+ * \brief Free a key-value list
+ *
+ * \note Any iters over the list will become invalid after this call.
+ *
+ * \since 1.0
+ */
 void arakoon_key_value_list_free(ArakoonKeyValueList * const list);
 
+/**
+ * \brief Abstract representation of an #ArakoonKeyValueList iterator
+ *
+ * \since 1.0
+ */
 typedef struct ArakoonKeyValueListIter ArakoonKeyValueListIter;
+/**
+ * \brief Create an iter for the given key-value list
+ *
+ * \since 1.0
+ */
 ArakoonKeyValueListIter * arakoon_key_value_list_create_iter(
     const ArakoonKeyValueList * const list)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT
     ARAKOON_GNUC_MALLOC;
+/**
+ * \brief Release an #ArakoonKeyValueListIter
+ *
+ * \since 1.0
+ */
 void arakoon_key_value_list_iter_free(ArakoonKeyValueListIter * const iter);
+/**
+ * \brief Retrieve the next item
+ *
+ * `key` and `value` will point to `NULL` when the last item was reached.
+ *
+ * \since 1.0
+ */
 arakoon_rc arakoon_key_value_list_iter_next(ArakoonKeyValueListIter * const iter,
     size_t * const key_size, const void ** const key,
     size_t * const value_size, const void ** const value)
     ARAKOON_GNUC_NONNULL;
+/**
+ * \brief Reset the list cursor to the first entry
+ *
+ * \since 1.0
+ */
 arakoon_rc arakoon_key_value_list_iter_reset(ArakoonKeyValueListIter * const iter)
     ARAKOON_GNUC_NONNULL;
-
+/**
+ * \brief Helper to map over an #ArakoonValueList
+ *
+ * \since 1.0
+ */
 #define FOR_ARAKOON_KEY_VALUE_ITER(i, kl, k, vl, v)        \
     for(arakoon_key_value_list_iter_next(i, kl, k, vl, v); \
-        (*k != NULL && *v != NULL);                          \
+        (*k != NULL && *v != NULL);                        \
         arakoon_key_value_list_iter_next(i, kl, k, vl, v))
 
-/* Sequence support */
+/** @} */
+/** @} */
+
+/** \defgroup Sequences Sequence support
+ * @{
+ */
 typedef struct ArakoonSequence ArakoonSequence;
 
 /* Allocate a new sequence
@@ -384,10 +614,13 @@ arakoon_rc arakoon_sequence_add_assert(ArakoonSequence *sequence,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
+/** @} */
 
-/* Client call options
- *
- * This struct contains some settings (to be set using accessor procedures)
+
+/** \defgroup ClientCallOptions Client call options
+ * @{
+ */
+/* This struct contains some settings (to be set using accessor procedures)
  * which could be of use when performing a client call to a cluster.
  *
  * Not all options are applicable to all calls. Whenever NULL is passed to a
@@ -444,6 +677,12 @@ arakoon_rc arakoon_client_call_options_set_timeout(
     ArakoonClientCallOptions * const options, int timeout)
     ARAKOON_GNUC_NONNULL1(1);
 
+/** @} */
+
+
+/** \defgroup ClusterNode Cluster nodes
+ * @{
+ */
 
 /* ArakoonClusterNode */
 typedef struct ArakoonClusterNode ArakoonClusterNode;
@@ -495,8 +734,11 @@ arakoon_rc arakoon_cluster_node_add_address(ArakoonClusterNode *node,
 arakoon_rc arakoon_cluster_node_add_address_tcp(ArakoonClusterNode *node,
     const char * const host, const char * const service)
     ARAKOON_GNUC_NONNULL3(1, 2, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/** @} */
 
-
+/** \defgroup Cluster Clusters
+ * @{
+ */
 typedef enum {
         ARAKOON_PROTOCOL_VERSION_1
 } ArakoonProtocolVersion;
@@ -527,11 +769,14 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
 /* Retrieve the name of the cluster */
 const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
-/* Retrieve the last error message received through the cluster
+/**
+ * \brief Retrieve the last error message received through the cluster
  *
  * Note you'll get a reference to a string which will be free'd upon the next
  * call using the cluster, or whenever the cluster is free'd. As such you
  * should create your own copy of the string for further usage, if required.
+ *
+ * \since 1.0
  */
 arakoon_rc arakoon_cluster_get_last_error(
     const ArakoonCluster * const cluster, size_t *len, const void ** data)
@@ -551,8 +796,11 @@ arakoon_rc arakoon_cluster_add_node(ArakoonCluster *cluster,
     ArakoonClusterNode *node)
     ARAKOON_GNUC_NONNULL2(1, 2) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
+/** @} */
 
-/* Client calls */
+/** \defgroup ClientOperations Client operations
+ * @{
+ */
 /* Send a 'hello' call to the server, using 'client_id' and 'cluster_id'
  *
  * The message returned by the server is stored at 'result', which should be
@@ -730,6 +978,8 @@ arakoon_rc arakoon_rev_range_entries(ArakoonCluster *cluster,
     const ssize_t max_elements,
     ArakoonKeyValueList **result) ARAKOON_GNUC_NONNULL2(1, 10)
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
+
+/** @} */
 
 ARAKOON_END_DECLS
 
