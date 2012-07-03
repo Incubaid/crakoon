@@ -73,14 +73,7 @@ rc_to_error(
 
     if (ARAKOON_RC_IS_ERRNO(rc))
     {
-        if (errno == ENOMEM)
-        {
-            throw std::bad_alloc();
-        }
-        else
-        {
-            throw std::runtime_error(strerror(ARAKOON_RC_AS_ERRNO(rc)));
-        }
+        throw std::runtime_error(strerror(ARAKOON_RC_AS_ERRNO(rc)));
     }
 
     switch ((ArakoonReturnCode) (rc))
@@ -537,7 +530,7 @@ client_call_options::~client_call_options()
 bool
 client_call_options::get_allow_dirty() const
 {
-    return (arakoon_client_call_options_get_allow_dirty(options_) == ARAKOON_BOOL_TRUE);
+    return !!(arakoon_client_call_options_get_allow_dirty(options_));
 }
 
 void
@@ -696,20 +689,20 @@ cluster::add_node(cluster_node & node)
 
 void
 cluster::connect_master(
-    client_call_options const * const options)
+    client_call_options const & options)
 {
-    rc_to_error(arakoon_cluster_connect_master(cluster_, (options ? options->get() : NULL)));
+    rc_to_error(arakoon_cluster_connect_master(cluster_, options.get()));
 }
 
 std::shared_ptr<std::string>
 cluster::hello(
-    client_call_options const * const options,
+    client_call_options const & options,
     std::string const & client_id,
     std::string const & cluster_id)
 {
     char * result = NULL;
 
-    rc_to_error(arakoon_hello(cluster_, (options ? options->get() : NULL), client_id.c_str(), cluster_id.c_str(), &result));
+    rc_to_error(arakoon_hello(cluster_, options.get(), client_id.c_str(), cluster_id.c_str(), &result));
 
     std::shared_ptr<std::string> result_ptr(new std::string(result));
 
@@ -721,11 +714,11 @@ cluster::hello(
 
 std::shared_ptr<std::string>
 cluster::who_master(
-    client_call_options const * const options)
+    client_call_options const & options)
 {
     char * result = NULL;
 
-    rc_to_error(arakoon_who_master(cluster_, (options ? options->get() : NULL), &result));
+    rc_to_error(arakoon_who_master(cluster_, options.get(), &result));
 
     std::shared_ptr<std::string> result_ptr(new std::string(result));
 
@@ -737,71 +730,71 @@ cluster::who_master(
 
 bool
 cluster::expect_progress_possible(
-    client_call_options const * const options)
+    client_call_options const & options)
 {
     arakoon_bool result = ARAKOON_BOOL_FALSE;
 
-    rc_to_error(arakoon_expect_progress_possible(cluster_, (options ? options->get() : NULL), &result));
+    rc_to_error(arakoon_expect_progress_possible(cluster_, options.get(), &result));
 
     return (result == ARAKOON_BOOL_TRUE);
 }
 
 bool
 cluster::exists(
-    client_call_options const * const options,
+    client_call_options const & options,
     buffer const & key)
 {
     arakoon_bool result = ARAKOON_BOOL_FALSE;
 
-    rc_to_error(arakoon_exists(cluster_, (options ? options->get() : NULL), key.size(), key.data(), &result));
+    rc_to_error(arakoon_exists(cluster_, options.get(), key.size(), key.data(), &result));
 
     return (result == ARAKOON_BOOL_TRUE);
 }
 
 buffer_ptr
 cluster::get(
-    client_call_options const * const options,
+    client_call_options const & options,
     buffer const & key)
 {
     size_t result_value_size = 0;
     void * result_value_data = NULL;
-    rc_to_error(arakoon_get(cluster_, (options ? options->get() : NULL), key.size(), key.data(), &result_value_size, &result_value_data));
+    rc_to_error(arakoon_get(cluster_, options.get(), key.size(), key.data(), &result_value_size, &result_value_data));
 
     return buffer_ptr(new buffer(result_value_data, result_value_size, true));
 }
 
 value_list_const_ptr
 cluster::multi_get(
-    client_call_options const * const options,
+    client_call_options const & options,
     value_list const & keys)
 {
     ArakoonValueList * result = NULL;
 
-    rc_to_error(arakoon_multi_get(cluster_, (options ? options->get() : NULL), keys.get(), &result));
+    rc_to_error(arakoon_multi_get(cluster_, options.get(), keys.get(), &result));
 
     return value_list_const_ptr(new value_list(result));
 }
 
 void
 cluster::set(
-    client_call_options const * const options,
+    client_call_options const & options,
     buffer const & key,
     buffer const & value)
 {
-    rc_to_error(arakoon_set(cluster_, (options ? options->get() : NULL), key.size(), key.data(), value.size(), value.data()));
+    rc_to_error(arakoon_set(cluster_, options.get(), key.size(), key.data(), value.size(), value.data()));
 }
 
 void
 cluster::remove(
-    client_call_options const * const options,
+    client_call_options const & options,
     buffer const & key)
 {
-    rc_to_error(arakoon_delete(cluster_, (options ? options->get() : NULL), key.size(), key.data()));
+    rc_to_error(arakoon_delete(cluster_, options.get(), key.size(), key.data()));
 }
 
 value_list_const_ptr
 cluster::range(
-    client_call_options const * const options,
+    client_call_options const & options,
     buffer const & begin_key,
     bool const begin_key_included,
     buffer const & end_key,
@@ -810,7 +803,7 @@ cluster::range(
 {
     ArakoonValueList * result = NULL;
 
-    rc_to_error(arakoon_range(cluster_, (options ? options->get() : NULL),
+    rc_to_error(arakoon_range(cluster_, options.get(),
         begin_key.size(), begin_key.data(),
         (begin_key_included ? ARAKOON_BOOL_TRUE : ARAKOON_BOOL_FALSE),
         end_key.size(), end_key.data(),
@@ -823,7 +816,7 @@ cluster::range(
 
 key_value_list_const_ptr
 cluster::range_entries(
-    client_call_options const * const options,
+    client_call_options const & options,
     buffer const & begin_key,
     bool const begin_key_included,
     buffer const & end_key,
@@ -832,7 +825,7 @@ cluster::range_entries(
 {
     ArakoonKeyValueList * result = NULL;
 
-    rc_to_error(arakoon_range_entries(cluster_, (options ? options->get() : NULL),
+    rc_to_error(arakoon_range_entries(cluster_, options.get(),
         begin_key.size(), begin_key.data(),
         (begin_key_included ? ARAKOON_BOOL_TRUE : ARAKOON_BOOL_FALSE),
         end_key.size(), end_key.data(),
@@ -845,7 +838,7 @@ cluster::range_entries(
 
 key_value_list_const_ptr
 cluster::rev_range_entries(
-    client_call_options const * const options,
+    client_call_options const & options,
     buffer const & begin_key,
     bool const begin_key_included,
     buffer const & end_key,
@@ -854,7 +847,7 @@ cluster::rev_range_entries(
 {
     ArakoonKeyValueList * result = NULL;
 
-    rc_to_error(arakoon_rev_range_entries(cluster_, (options ? options->get() : NULL),
+    rc_to_error(arakoon_rev_range_entries(cluster_, options.get(),
         begin_key.size(), begin_key.data(),
         (begin_key_included ? ARAKOON_BOOL_TRUE : ARAKOON_BOOL_FALSE),
         end_key.size(), end_key.data(),
@@ -867,20 +860,20 @@ cluster::rev_range_entries(
 
 value_list_const_ptr
 cluster::prefix(
-    client_call_options const * const options,
+    client_call_options const & options,
     buffer const & begin_key,
     ssize_t const max_elements)
 {
     ArakoonValueList * result = NULL;
 
-    rc_to_error(arakoon_prefix(cluster_, (options ? options->get() : NULL), begin_key.size(), begin_key.data(), max_elements, &result));
+    rc_to_error(arakoon_prefix(cluster_, options.get(), begin_key.size(), begin_key.data(), max_elements, &result));
 
     return value_list_const_ptr(new value_list(result));
 }
 
 buffer_ptr
 cluster::test_and_set(
-    client_call_options const * const options,
+    client_call_options const & options,
     buffer const & key,
     buffer const & old_value,
     buffer const & new_value)
@@ -892,24 +885,24 @@ cluster::test_and_set(
     size_t result_value_size = 0;
     void * result_value_data = NULL;
 
-    rc_to_error(arakoon_test_and_set(cluster_, (options ? options->get() : NULL), key.size(), key.data(), old_value_size, old_value_data, new_value_size, new_value_data, &result_value_size, &result_value_data));
+    rc_to_error(arakoon_test_and_set(cluster_, options.get(), key.size(), key.data(), old_value_size, old_value_data, new_value_size, new_value_data, &result_value_size, &result_value_data));
 
     return buffer_ptr(new buffer(result_value_data, result_value_size, true));
 }
 
 void
 cluster::sequence(
-    client_call_options const * const options,
+    client_call_options const & options,
     arakoon::sequence const & sequence)
 {
-    rc_to_error(arakoon_sequence(cluster_, (options ? options->get() : NULL), sequence.get()));
+    rc_to_error(arakoon_sequence(cluster_, options.get(), sequence.get()));
 }
 
 void cluster::synced_sequence(
-    client_call_options const * const options,
+    client_call_options const & options,
     arakoon::sequence const & sequence)
 {
-    rc_to_error(arakoon_synced_sequence(cluster_, (options ? options->get() : NULL), sequence.get()));
+    rc_to_error(arakoon_synced_sequence(cluster_, options.get(), sequence.get()));
 }
 
 } // namespace arakoon

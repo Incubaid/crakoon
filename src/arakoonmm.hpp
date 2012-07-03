@@ -577,7 +577,7 @@ class cluster
      * \param options Options, or NULL for default options.
      */
     void connect_master(
-        client_call_options const * const options);
+        client_call_options const & options);
 
     /**
      * \brief Send a 'hello' call to the server, using 'client_id' and
@@ -585,7 +585,7 @@ class cluster
      * \param options Options, or NULL for default options.
      */
     std::shared_ptr<std::string> hello(
-        client_call_options const * const options,
+        client_call_options const & options,
         std::string const & client_id,
         std::string const & cluster_id);
 
@@ -595,21 +595,21 @@ class cluster
      * \param options Options, or NULL for default options.
      */
     std::shared_ptr<std::string> who_master(
-        client_call_options const * const options);
+        client_call_options const & options);
 
     /**
      * \brief Send an 'expect_progress_possible' call to the server.
      * \param options Options, or NULL for default options.
      */
     bool expect_progress_possible(
-        client_call_options const * const options);
+        client_call_options const & options);
 
     /**
      * \brief Send an 'exists' call to the server.
      * \param options Options, or NULL for default options.
      */
     bool exists(
-        client_call_options const * const options,
+        client_call_options const & options,
         buffer const & key);
 
     /**
@@ -617,7 +617,7 @@ class cluster
      * \param options Options, or NULL for default options.
      */
     buffer_ptr get(
-        client_call_options const * const options,
+        client_call_options const & options,
         buffer const & key);
 
     /**
@@ -625,7 +625,7 @@ class cluster
      * \param options Options, or NULL for default options.
      */
     value_list_const_ptr multi_get(
-        client_call_options const * const options,
+        client_call_options const & options,
         value_list const & keys);
 
     /**
@@ -633,7 +633,7 @@ class cluster
      * \param options Options, or NULL for default options.
      */
     void set(
-        client_call_options const * const options,
+        client_call_options const & options,
         buffer const & key,
         buffer const & value);
 
@@ -642,7 +642,7 @@ class cluster
      * \param options Options, or NULL for default options.
      */
     void remove(
-        client_call_options const * const options,
+        client_call_options const & options,
         buffer const & key);
 
     /**
@@ -652,7 +652,7 @@ class cluster
      * \param options Options, or NULL for default options.
      */
     value_list_const_ptr range(
-        client_call_options const * const options,
+        client_call_options const & options,
         buffer const & begin_key,
         bool const begin_key_included,
         buffer const & end_key,
@@ -666,7 +666,7 @@ class cluster
      * \param options Options, or NULL for default options.
      */
     key_value_list_const_ptr range_entries(
-        client_call_options const * const options,
+        client_call_options const & options,
         buffer const & begin_key,
         bool const begin_key_included,
         buffer const & end_key,
@@ -680,7 +680,7 @@ class cluster
      * \param options Options, or NULL for default options.
      */
     key_value_list_const_ptr rev_range_entries(
-        client_call_options const * const options,
+        client_call_options const & options,
         buffer const & begin_key,
         bool const begin_key_included,
         buffer const & end_key,
@@ -693,7 +693,7 @@ class cluster
      * \param options Options, or NULL for default options.
      */
     value_list_const_ptr prefix(
-        client_call_options const * const options,
+        client_call_options const & options,
         buffer const & begin_key,
         ssize_t const max_elements);
 
@@ -708,7 +708,7 @@ class cluster
      * \return The
      */
     buffer_ptr test_and_set(
-        client_call_options const * const options,
+        client_call_options const & options,
         buffer const & key,
         buffer const & old_value,
         buffer const & new_value);
@@ -719,7 +719,7 @@ class cluster
      * \param sequence The command sequence to execute.
      */
     void sequence(
-        client_call_options const * const options,
+        client_call_options const & options,
         arakoon::sequence const & sequence);
 
     /**
@@ -728,7 +728,7 @@ class cluster
      * \param sequence The command sequence to execute.
      */
     void synced_sequence(
-        client_call_options const * const options,
+        client_call_options const & options,
         arakoon::sequence const & sequence);
 
   private:
