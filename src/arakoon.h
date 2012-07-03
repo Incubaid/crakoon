@@ -33,10 +33,18 @@
 /**
  * \mainpage
  *
+ * \ref arakoon_c_api_group
+ *
+ * \ref arakoon_cpp_api_group
+ */
+
+/** \defgroup arakoon_c_api_group Arakoon C API
+ * @{
+ */
+/**
  * Conventions
- * ===========
- * Strings
- * -------
+ *
+ * \par Strings
  * We use 2 types of string-like values in Crakoon: null-terminated C-strings,
  * using `char *` as type, and plain chunks of memory, encoded as a pointer to
  * this memory (`void *`), and the value size (`size_t`). Whenever we're
@@ -44,8 +52,7 @@
  * dealing with cluster or node names). Generic byte sequences, e.g. keys or
  * values, are encoded using the second system.
  *
- * Memory handling
- * ---------------
+ * \par Memory handling
  * The memory handling procedures to be used by Crakoon can be set through
  * arakoon_memory_set_hooks. The `malloc`, `free` and `realloc` functions can be
  * specified. Crakoon should not use any other heap-allocation functions.
@@ -64,8 +71,7 @@
  * abort on allocation failure, you can register simple wrappers around `malloc`
  * and `realloc` which e.g. call *abort(3)* on failure.
  *
- * Error handling
- * --------------
+ * \par Error handling
  * Most procedures return an #arakoon_rc value, which is an integer value. If
  * this value is negative, it's an *errno* value. If it is equal to 0, it
  * signifies success. A positive value is part of the #ArakoonReturnCode
@@ -143,7 +149,7 @@
 
 ARAKOON_BEGIN_DECLS
 
-/** \defgroup ResultCodes Result code handling
+/** \defgroup ResultCodes Result codes
  * @{
  */
 /**
@@ -387,7 +393,7 @@ ArakoonLogHandler arakoon_log_get_stderr_handler(void);
  * @{
  */
 
-/** \defgroup ValueList Value lists
+/** \defgroup ValueList Lists of keys or values
  * @{
  */
 /**
@@ -496,7 +502,7 @@ arakoon_rc arakoon_value_list_iter_reset(ArakoonValueListIter * const iter)
         arakoon_value_list_iter_next(i, l, v))
 /** @} */
 
-/** \defgroup KeyValueList Key-value lists
+/** \defgroup KeyValueList Lists of (key, value) pairs
  *
  * \brief Similar to \ref ValueList "ValueLists", but with pairs of values, sort-of
  *
@@ -576,7 +582,7 @@ arakoon_rc arakoon_key_value_list_iter_reset(ArakoonKeyValueListIter * const ite
 /** @} */
 /** @} */
 
-/** \defgroup Sequences Sequence support
+/** \defgroup Sequences Sequences
  * @{
  */
 typedef struct ArakoonSequence ArakoonSequence;
@@ -982,5 +988,6 @@ arakoon_rc arakoon_rev_range_entries(ArakoonCluster *cluster,
 /** @} */
 
 ARAKOON_END_DECLS
+/** @} */
 
 #endif /* ifndef __ARAKOON_H__ */
