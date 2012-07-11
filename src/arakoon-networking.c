@@ -48,6 +48,11 @@
 # define CLOCK_SOURCE CLOCK_REALTIME
 #endif
 
+static int _arakoon_networking_socket_wrapper(int domain, int type,
+    int protocol);
+static int _arakoon_networking_connect_wrapper(int sockfd,
+    const struct sockaddr *addr, socklen_t addrlen);
+
 static long time_delta(const struct timespec * const start,
     const struct timespec * const end) {
         long nd = 0;
@@ -292,7 +297,8 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
         for(rp = addr; rp != NULL; rp = rp->ai_next) {
                 i++;
 
-                sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+                sock = _arakoon_networking_socket_wrapper(
+                        rp->ai_family, rp->ai_socktype, rp->ai_protocol);
 
                 if(sock == -1) {
                         _arakoon_log_error("Failed to create socket: %s",
@@ -307,7 +313,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
                         _arakoon_log_error(
                                 "Failed to retrieve socket flags: %s",
                                 strerror(errno));
-                        close(sock);
+                        _arakoon_networking_close_wrapper(sock);
 
                         fds[i] = -1;
 
@@ -318,14 +324,15 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
                         _arakoon_log_error(
                                 "Failed to set socket flags: %s",
                                 strerror(errno));
-                        close(sock);
+                        _arakoon_networking_close_wrapper(sock);
 
                         fds[i] = -1;
 
                         continue;
                 }
 
-                ret = connect(sock, rp->ai_addr, rp->ai_addrlen);
+                ret = _arakoon_networking_connect_wrapper(sock, rp->ai_addr,
+                        rp->ai_addrlen);
 
                 if(ret < 0) {
                         if(errno != EINPROGRESS) {
@@ -333,7 +340,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
                                         "Failed to connect socket: %s",
                                         strerror(errno));
 
-                                close(sock);
+                                _arakoon_networking_close_wrapper(sock);
                                 fds[i] = -1;
 
                                 continue;
@@ -349,7 +356,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
                                         "Failed to set socket flags: %s",
                                         strerror(errno));
 
-                                close(sock);
+                                _arakoon_networking_close_wrapper(sock);
                                 fds[i] = -1;
 
                                 continue;
@@ -430,7 +437,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
                         if(revents & POLLERR ||
                                 revents & POLLHUP ||
                                 revents & POLLNVAL) {
-                                close(ev[i].fd);
+                                _arakoon_networking_close_wrapper(ev[i].fd);
 
                                 for(j = 0; j < num_addresses; j++) {
                                         if(fds[j] == ev[i].fd) {
@@ -451,7 +458,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
                                                 _arakoon_log_error("Failed to set flags: %s",
                                                         strerror(errno));
 
-                                                close(the_socket);
+                                                _arakoon_networking_close_wrapper(the_socket);
                                                 fds[i] = -1;
                                         }
                                         else {
@@ -474,7 +481,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
 cleanup:
         for(i = 0; i < num_addresses; i++) {
                 if(fds[i] >= 0 && fds[i] != the_socket) {
-                        close(fds[i]);
+                        _arakoon_networking_close_wrapper(fds[i]);
 
                         fds[i] = -1;
                 }
@@ -488,7 +495,7 @@ cleanup:
                 ret = clock_gettime(CLOCK_SOURCE, &now);
                 if(ret != 0) {
                         if(the_socket >= 0) {
-                                close(the_socket);
+                                _arakoon_networking_close_wrapper(the_socket);
                                 *fd = -1;
                         }
 
@@ -497,6 +504,128 @@ cleanup:
 
                 *timeout = timeout_ - time_delta(&start, &now);
         }
+
+        if(rc == ARAKOON_RC_SUCCESS) {
+                _arakoon_log_debug(
+                        "arakoon-networking: connected, fd %d",
+                        *fd);
+        }
+
+        return rc;
+}
+
+
+static int _arakoon_networking_socket_wrapper(int domain, int type,
+    int protocol) {
+        const char *sd, *st;
+
+        switch(domain) {
+                case AF_UNIX:
+                        sd = "AF_UNIX";
+                        break;
+                case AF_INET:
+                        sd = "AF_INET";
+                        break;
+                case AF_INET6:
+                        sd = "AF_INET6";
+                        break;
+                default:
+                        sd = "(unknown)";
+                        break;
+        }
+
+        switch(type) {
+                case SOCK_STREAM:
+                        st = "SOCK_STREAM";
+                        break;
+                case SOCK_DGRAM:
+                        st = "SOCK_DGRAM";
+                        break;
+                default:
+                        st = "(unknown)";
+                        break;
+        }
+
+        int fd = socket(domain, type, protocol);
+
+        _arakoon_log_debug(
+                "arakoon-networking: socket(%s, %s, %d) = %d, errno = %d",
+                sd, st, protocol, fd, errno);
+
+        return fd;
+}
+
+static int _arakoon_networking_connect_wrapper(int sockfd,
+    const struct sockaddr *addr, socklen_t addrlen) {
+        char host[NI_MAXHOST], serv[NI_MAXSERV];
+        int n = 0, rc = 0;
+
+
+        if(addr->sa_family == AF_INET || addr->sa_family == AF_INET6) {
+                n = getnameinfo(addr, addrlen, host, NI_MAXHOST,
+                        serv, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV);
+
+                if(n < 0) {
+                        _arakoon_log_warning(
+                                "arakoon-networking: getnameinfo() failed - %s",
+                                gai_strerror(n));
+                }
+        }
+        else {
+                n = -1;
+        }
+
+        rc = connect(sockfd, addr, addrlen);
+
+        if(n < 0) {
+                _arakoon_log_debug(
+                        "arakoon-networking: connect(%d, %p, %d) = %d, "
+                        "errno = %d",
+                        sockfd, addr, addrlen, rc, errno);
+        }
+        else {
+                _arakoon_log_debug(
+                        "arakoon-networking: connect(%d, (%s:%s)@%p, %d) = %d, "
+                        "errno = %d",
+                        sockfd, host, serv, addr, addrlen, rc, errno);
+        }
+
+        return rc;
+}
+
+int _arakoon_networking_close_wrapper(int fd) {
+        int rc = close(fd);
+
+        _arakoon_log_debug("arakoon-networking: close(%d) = %d, errno = %d",
+                fd, rc, errno);
+
+        return rc;
+}
+
+int _arakoon_networking_shutdown_wrapper(int sockfd, int how) {
+        int rc = 0;
+        char *s = NULL;
+
+        switch(how) {
+                case SHUT_RD:
+                        s = "SHUT_RD";
+                        break;
+                case SHUT_WR:
+                        s = "SHUT_WR";
+                        break;
+                case SHUT_RDWR:
+                        s = "SHUT_RDWR";
+                        break;
+                default:
+                        s = "(invalid)";
+                        break;
+        }
+
+        rc = shutdown(sockfd, how);
+
+        _arakoon_log_debug(
+                "arakoon-networking: shutdown(%d, %s) = %d, errno = %d",
+                sockfd, s, rc, errno);
 
         return rc;
 }
