@@ -39,6 +39,9 @@ arakoon_rc _arakoon_networking_poll_read(int fd, void *buf, size_t count,
 arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
     int *timeout) ARAKOON_GNUC_NONNULL2(1, 2);
 
+int _arakoon_networking_close_wrapper(int fd);
+int _arakoon_networking_shutdown_wrapper(int sockfd, int how);
+
 ARAKOON_END_DECLS
 
 #endif /* ifndef __ARAKOON_NETWORKING_H__ */
