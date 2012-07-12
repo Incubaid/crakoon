@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #include "arakoon.h"
 #include "memory.h"
@@ -35,6 +36,11 @@ struct Node {
         ArakoonClusterNode *node;
         Node *next;
 };
+
+static void client_error_handler(arakoon_rc rc, size_t len, const void *msg) {
+        fprintf(stderr, "[CLIENT ERROR] %s: %.*s\n", arakoon_strerror(rc),
+                len < INT_MAX ? (int) len : INT_MAX, (const char *) msg);
+}
 
 int main(int argc, char **argv) {
         ArakoonCluster *c = NULL;
@@ -74,6 +80,7 @@ int main(int argc, char **argv) {
 
         arakoon_memory_set_hooks(&hooks);
         arakoon_log_set_handler(arakoon_log_get_stderr_handler());
+        arakoon_log_set_client_error_handler(client_error_handler);
 
         options = arakoon_client_call_options_new();
         arakoon_client_call_options_set_timeout(options, 400);
