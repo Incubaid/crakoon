@@ -31,6 +31,7 @@
 #include "arakoon-utils.h"
 #include "arakoon-cluster-node.h"
 #include "arakoon-assert.h"
+#include "arakoon-networking.h"
 
 struct ArakoonClusterNode {
         char * name;
@@ -83,8 +84,9 @@ void arakoon_cluster_node_free(ArakoonClusterNode *node) {
         RETURN_IF_NULL(node);
 
         if(node->fd >= 0) {
-                _arakoon_log_warning("Freeing a cluster node which wasn't "
-                        "disconnected before");
+                _arakoon_log_warning(
+                        "arakoon-cluster-node: freeing a cluster node "
+                        "which wasn't disconnected before");
                 _arakoon_cluster_node_disconnect(node);
         }
 
@@ -102,9 +104,13 @@ arakoon_rc _arakoon_cluster_node_connect(ArakoonClusterNode *node,
 
         FUNCTION_ENTER(_arakoon_cluster_node_connect);
 
+        _arakoon_log_info("arakoon-cluster-node: connecting to %s",
+                node->name);
+
         if(node->fd >= 0) {
                 _arakoon_log_warning(
-                        "arakoon_cluster_node_connect called, but FD >= 0");
+                        "arakoon-cluster-node: arakoon_cluster_node_connect "
+                        "called, but FD >= 0");
 
                 return ARAKOON_RC_SUCCESS;
         }
@@ -114,10 +120,15 @@ arakoon_rc _arakoon_cluster_node_connect(ArakoonClusterNode *node,
         if(rc != ARAKOON_RC_SUCCESS) {
                 node->fd = -1;
 
-                _arakoon_log_error("Unable to connect to node %s", node->name);
+                _arakoon_log_error(
+                        "arakoon-cluster-node: unable to connect to node %s",
+                        node->name);
 
                 return rc;
         }
+
+        _arakoon_log_info("arakoon-cluster-node: connected to node %s, fd %d",
+                node->name, node->fd);
 
         /* Send prologue */
         name = arakoon_cluster_get_name(node->cluster);
@@ -145,8 +156,11 @@ void _arakoon_cluster_node_disconnect(ArakoonClusterNode *node) {
         FUNCTION_ENTER(_arakoon_internal_cluster_node_disconnect);
 
         if(node->fd >= 0) {
-                shutdown(node->fd, SHUT_RDWR);
-                close(node->fd);
+                _arakoon_log_info(
+                        "arakoon-cluster-node: disconnecting from node %s, fd %d",
+                        node->name, node->fd);
+                _arakoon_networking_shutdown_wrapper(node->fd, SHUT_RDWR);
+                _arakoon_networking_close_wrapper(node->fd);
         }
 
         node->fd = -1;
@@ -258,7 +272,7 @@ arakoon_rc arakoon_cluster_node_add_address_tcp(ArakoonClusterNode *node,
         ASSERT_NON_NULL_RC(host);
         ASSERT_NON_NULL_RC(service);
 
-        _arakoon_log_debug("Looking up node %s at %s:%s",
+        _arakoon_log_debug("arakoon-cluster-node: looking up node %s at %s:%s",
                 _arakoon_cluster_node_get_name(node), host, service);
 
         memset(&hints, 0, sizeof(struct addrinfo));
@@ -270,7 +284,8 @@ arakoon_rc arakoon_cluster_node_add_address_tcp(ArakoonClusterNode *node,
         rc = getaddrinfo(host, service, &hints, &result);
 
         if(rc != 0) {
-                _arakoon_log_error("Address lookup failed: %s",
+                _arakoon_log_error(
+                        "arakoon-cluster-node: address lookup failed: %s",
                         gai_strerror(rc));
                 return ARAKOON_RC_CLIENT_NETWORK_ERROR;
         }
