@@ -384,6 +384,32 @@ void arakoon_log_set_handler(const ArakoonLogHandler handler);
  */
 ArakoonLogHandler arakoon_log_get_stderr_handler(void);
 
+
+/**
+ * \brief Prototype for client error handlers
+ *
+ * This is mainly meant to separate client error logging from standard library
+ * functionality logging.
+ *
+ * By default, client errors will be logged to the default logger at
+ * #ARAKOON_LOG_DEBUG level. If the message contains a NUL-byte, it will be
+ * truncated.
+ *
+ * If a specific handler is set using #arakoon_log_set_client_error_handler,
+ * this will be used instead.
+ *
+ * \since 1.1
+ */
+typedef void (*ArakoonClientErrorHandler) (arakoon_rc rc,
+    const size_t message_size, const void * const message);
+/**
+ * \brief Set a client error log handler
+ *
+ * \since 1.1
+ */
+void arakoon_log_set_client_error_handler(const ArakoonClientErrorHandler);
+
+
 /** @} */
 
 /** \defgroup DataStructures Data structures

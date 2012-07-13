@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <limits.h>
 
 #include "arakoon.h"
 #include "arakoon-utils.h"
@@ -170,6 +171,27 @@ DEFINE_LOG_FUNCTION(error, ARAKOON_LOG_ERROR)
 DEFINE_LOG_FUNCTION(fatal, ARAKOON_LOG_FATAL)
 
 #undef DEFINE_LOG_FUNCTION
+
+
+static ArakoonClientErrorHandler client_error_handler = NULL;
+
+void arakoon_log_set_client_error_handler(
+    const ArakoonClientErrorHandler handler) {
+        client_error_handler = handler;
+}
+
+void _arakoon_log_client_error(arakoon_rc rc, size_t message_size,
+    const void * const message) {
+        if(client_error_handler) {
+                client_error_handler(rc, message_size, message);
+        }
+        else {
+                _arakoon_log_debug("%s: %.*s", arakoon_strerror(rc),
+                        message_size < INT_MAX ? (int) message_size : INT_MAX,
+                        (const char *) message);
+        }
+}
+
 
 /* Memory management */
 ArakoonMemoryHooks memory_hooks = {
