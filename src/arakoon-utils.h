@@ -98,6 +98,9 @@ void _arakoon_log_warning(const char *format, ...) ARAKOON_GNUC_PRINTF(1, 2);
 void _arakoon_log_error(const char *format, ...) ARAKOON_GNUC_PRINTF(1, 2);
 void _arakoon_log_fatal(const char *format, ...) ARAKOON_GNUC_PRINTF(1, 2);
 
+void _arakoon_log_client_error(arakoon_rc rc,
+        size_t message_size, const void * message) ARAKOON_GNUC_NONNULL1(3);
+
 #define ASSERT_ALL_WRITTEN(command, c, len)                            \
         STMT_START                                                     \
         if(c != command + len) {                                       \

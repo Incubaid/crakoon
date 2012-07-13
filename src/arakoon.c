@@ -245,7 +245,7 @@ arakoon_rc arakoon_sequence_add_assert(ArakoonSequence *sequence,
                 void *_err_msg = NULL;                                        \
                 size_t _err_len = 0;                                          \
                 arakoon_rc _err_rc = 0;                                       \
-                _arakoon_log_debug("Error detected, reading message");        \
+                _arakoon_log_trace("Non-zero return, reading message");       \
                 ARAKOON_PROTOCOL_READ_STRING(                                 \
                     master, _err_msg, _err_len, _err_rc, timeout);            \
                 if(_err_rc != ARAKOON_RC_SUCCESS) {                           \
@@ -254,10 +254,7 @@ arakoon_rc arakoon_sequence_add_assert(ArakoonSequence *sequence,
                             arakoon_strerror(_err_rc));                       \
                         break;                                                \
                 }                                                             \
-                _arakoon_log_warning(                                         \
-                    "%s: %.*s", arakoon_strerror(rc),                         \
-                    _err_len < INT_MAX ? (int) _err_len : INT_MAX,            \
-                    (char *) _err_msg);                                       \
+                _arakoon_log_client_error(rc, _err_len, _err_msg);            \
                 _arakoon_cluster_set_last_error(cluster, _err_len, _err_msg); \
         }                                                                     \
         STMT_END
