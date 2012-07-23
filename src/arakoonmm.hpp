@@ -24,6 +24,13 @@
 #ifndef ARAKOON_HPP
 #define ARAKOON_HPP
 
+#ifndef ARAKOON_H_EXPORT_PROCEDURES
+# define ARAKOON_H_EXPORT_PROCEDURES 0
+#endif
+#ifndef ARAKOON_H_EXPORT_TYPES
+# define ARAKOON_H_EXPORT_TYPES 1
+#endif
+
 #include "arakoon.h"
 
 // use arakoon::memory_set_hooks instead
