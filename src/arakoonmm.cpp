@@ -21,13 +21,15 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define ARAKOON_H_EXPORT_PROCEDURES 1
+#define ARAKOON_H_EXPORT_TYPES 1
+#include "arakoon.h"
+
 #include "arakoonmm.hpp"
 
 #include <stdexcept>
 #include <system_error>
 #include <string.h>
-
-extern arakoon_rc arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks) ARAKOON_GNUC_NONNULL;
 
 namespace arakoon {
 

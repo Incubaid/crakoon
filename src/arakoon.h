@@ -147,7 +147,16 @@
 
 /** \endcond */
 
+#ifndef ARAKOON_H_EXPORT_TYPES
+# define ARAKOON_H_EXPORT_TYPES 1
+#endif
+#ifndef ARAKOON_H_EXPORT_PROCEDURES
+# define ARAKOON_H_EXPORT_PROCEDURES 1
+#endif
+
 ARAKOON_BEGIN_DECLS
+
+#if ARAKOON_H_EXPORT_TYPES
 
 /** \defgroup ResultCodes Result codes
  * @{
@@ -231,6 +240,10 @@ typedef int arakoon_rc;
  */
 #define ARAKOON_RC_AS_ARAKOONRETURNCODE(n) ((ArakoonReturnCode) n)
 
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
+
 /**
  * \brief Turn an #arakoon_rc value into a human-readable string representation
  *
@@ -245,6 +258,8 @@ typedef int arakoon_rc;
  */
 const char * arakoon_strerror(arakoon_rc n);
 
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
+
 /** @} */
 
 
@@ -253,9 +268,15 @@ const char * arakoon_strerror(arakoon_rc n);
  */
 
 /* Utility stuff */
+#if ARAKOON_H_EXPORT_TYPES
+
 typedef char arakoon_bool;
 #define ARAKOON_BOOL_TRUE (1)
 #define ARAKOON_BOOL_FALSE (0)
+
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
 
 /* Library version information */
 /**
@@ -305,6 +326,8 @@ const char * arakoon_library_version_info(void) ARAKOON_GNUC_CONST;
 char * arakoon_utils_make_string(void *data, size_t length)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
+
 /** @} */
 
 
@@ -313,6 +336,8 @@ char * arakoon_utils_make_string(void *data, size_t length)
  */
 
 /* Memory handling */
+#if ARAKOON_H_EXPORT_TYPES
+
 /**
  * \brief A vtable containing function pointers to be used for heap management
  *
@@ -323,6 +348,10 @@ typedef struct {
     void (*free) (void *ptr); /**< *free(3)* */
     void * (*realloc) (void *ptr, size_t size); /**< *realloc(3)* */
 } ArakoonMemoryHooks;
+
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
 
 /**
  * \brief Register memory-management functions to be used by Crakoon
@@ -344,11 +373,15 @@ arakoon_rc arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks)
  */
 const ArakoonMemoryHooks * arakoon_memory_get_abort_hooks(void);
 
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
+
 /** @} */
 
 /** \defgroup Logging
  * @{
  */
+#if ARAKOON_H_EXPORT_TYPES
+
 /**
  * \brief Enumeration of log levels
  *
@@ -371,6 +404,10 @@ typedef enum {
 typedef void (*ArakoonLogHandler) (ArakoonLogLevel level,
     const char * message);
 
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
+
 /**
  * \brief Set a log message handler procedure
  *
@@ -384,7 +421,9 @@ void arakoon_log_set_handler(const ArakoonLogHandler handler);
  */
 ArakoonLogHandler arakoon_log_get_stderr_handler(void);
 
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
 
+#if ARAKOON_H_EXPORT_TYPES
 /**
  * \brief Prototype for client error handlers
  *
@@ -402,12 +441,19 @@ ArakoonLogHandler arakoon_log_get_stderr_handler(void);
  */
 typedef void (*ArakoonClientErrorHandler) (arakoon_rc rc,
     const size_t message_size, const void * const message);
+
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
+
 /**
  * \brief Set a client error log handler
  *
  * \since 1.1
  */
 void arakoon_log_set_client_error_handler(const ArakoonClientErrorHandler);
+
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
 
 
 /** @} */
@@ -422,12 +468,18 @@ void arakoon_log_set_client_error_handler(const ArakoonClientErrorHandler);
 /** \defgroup ValueList Lists of keys or values
  * @{
  */
+#if ARAKOON_H_EXPORT_TYPES
 /**
  * \brief Abstract representation of a value list
  *
  * \since 1.0
  */
 typedef struct ArakoonValueList ArakoonValueList;
+
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
+
 /**
  * \brief Create a new #ArakoonValueList
  *
@@ -465,12 +517,19 @@ ssize_t arakoon_value_list_size(const ArakoonValueList * const list)
  */
 void arakoon_value_list_free(ArakoonValueList * const list);
 
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
+
+#if ARAKOON_H_EXPORT_TYPES
 /**
  * \brief Abstract representation of an #ArakoonValueList iterator
  *
  * \since 1.0
  */
 typedef struct ArakoonValueListIter ArakoonValueListIter;
+
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
 /**
  * \brief Create an iter for the given value list
  *
@@ -504,6 +563,8 @@ arakoon_rc arakoon_value_list_iter_next(ArakoonValueListIter * const iter,
 arakoon_rc arakoon_value_list_iter_reset(ArakoonValueListIter * const iter)
     ARAKOON_GNUC_NONNULL;
 
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
+
 /**
  * \brief Helper to map over an #ArakoonValueList
  *
@@ -534,12 +595,17 @@ arakoon_rc arakoon_value_list_iter_reset(ArakoonValueListIter * const iter)
  *
  * @{
  */
+#if ARAKOON_H_EXPORT_TYPES
 /**
  * \brief Abstract representation of a key-value list
  *
  * \since 1.0
  */
 typedef struct ArakoonKeyValueList ArakoonKeyValueList;
+
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
 /**
  * \brief Retrieve the number of items in the list
  *
@@ -556,12 +622,19 @@ ssize_t arakoon_key_value_list_size(const ArakoonKeyValueList * const list)
  */
 void arakoon_key_value_list_free(ArakoonKeyValueList * const list);
 
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
+
+#if ARAKOON_H_EXPORT_TYPES
 /**
  * \brief Abstract representation of an #ArakoonKeyValueList iterator
  *
  * \since 1.0
  */
 typedef struct ArakoonKeyValueListIter ArakoonKeyValueListIter;
+
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
 /**
  * \brief Create an iter for the given key-value list
  *
@@ -595,6 +668,8 @@ arakoon_rc arakoon_key_value_list_iter_next(ArakoonKeyValueListIter * const iter
  */
 arakoon_rc arakoon_key_value_list_iter_reset(ArakoonKeyValueListIter * const iter)
     ARAKOON_GNUC_NONNULL;
+
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
 /**
  * \brief Helper to map over an #ArakoonValueList
  *
@@ -608,11 +683,15 @@ arakoon_rc arakoon_key_value_list_iter_reset(ArakoonKeyValueListIter * const ite
 /** @} */
 /** @} */
 
+#if ARAKOON_H_EXPORT_TYPES
 /** \defgroup Sequences Sequences
  * @{
  */
 typedef struct ArakoonSequence ArakoonSequence;
 
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
 /* Allocate a new sequence
  *
  * The return value should be released using arakoon_sequence_free once no
@@ -646,12 +725,14 @@ arakoon_rc arakoon_sequence_add_assert(ArakoonSequence *sequence,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
 /** @} */
 
 
 /** \defgroup ClientCallOptions Client call options
  * @{
  */
+#if ARAKOON_H_EXPORT_TYPES
 /* This struct contains some settings (to be set using accessor procedures)
  * which could be of use when performing a client call to a cluster.
  *
@@ -666,6 +747,9 @@ typedef struct ArakoonClientCallOptions ArakoonClientCallOptions;
 #define ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT \
         ARAKOON_CLIENT_CALL_OPTIONS_INFINITE_TIMEOUT
 
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
 /* Allocate a new ArakoonClientCallOptions structure
  *
  * The returned value should be released using arakoon_client_call_options_free
@@ -709,6 +793,7 @@ arakoon_rc arakoon_client_call_options_set_timeout(
     ArakoonClientCallOptions * const options, int timeout)
     ARAKOON_GNUC_NONNULL1(1);
 
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
 /** @} */
 
 
@@ -717,8 +802,11 @@ arakoon_rc arakoon_client_call_options_set_timeout(
  */
 
 /* ArakoonClusterNode */
+#if ARAKOON_H_EXPORT_TYPES
 typedef struct ArakoonClusterNode ArakoonClusterNode;
+#endif /* ARAKOON_H_EXPORT_TYPES */
 
+#if ARAKOON_H_EXPORT_PROCEDURES
 /* Allocate a new ArakoonClusterNode
  *
  * This can be released using arakoon_cluster_node_free, unless the node has
@@ -766,11 +854,15 @@ arakoon_rc arakoon_cluster_node_add_address(ArakoonClusterNode *node,
 arakoon_rc arakoon_cluster_node_add_address_tcp(ArakoonClusterNode *node,
     const char * const host, const char * const service)
     ARAKOON_GNUC_NONNULL3(1, 2, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
 /** @} */
 
 /** \defgroup Cluster Clusters
  * @{
  */
+#if ARAKOON_H_EXPORT_TYPES
+
 typedef enum {
         ARAKOON_PROTOCOL_VERSION_1
 } ArakoonProtocolVersion;
@@ -778,6 +870,9 @@ typedef enum {
 /* ArakoonCluster */
 typedef struct ArakoonCluster ArakoonCluster;
 
+#endif /* ARAKOON_H_EXPORT_TYPES */
+
+#if ARAKOON_H_EXPORT_PROCEDURES
 /* Allocate a new ArakoonCluster, to be released using arakoon_cluster_free
  *
  * The given name will be copied and released in arakoon_cluster_free
@@ -1010,6 +1105,8 @@ arakoon_rc arakoon_rev_range_entries(ArakoonCluster *cluster,
     const ssize_t max_elements,
     ArakoonKeyValueList **result) ARAKOON_GNUC_NONNULL2(1, 10)
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
+
+#endif /* ARAKOON_H_EXPORT_PROCEDURES */
 
 /** @} */
 
