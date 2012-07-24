@@ -24,6 +24,7 @@
 #define ARAKOON_H_EXPORT_PROCEDURES 1
 #define ARAKOON_H_EXPORT_TYPES 1
 #include "arakoon.h"
+#include "arakoon-utils.h"
 
 #include "arakoonmm.hpp"
 
@@ -131,15 +132,10 @@ rc_to_error(
 }
 
 //// memory hooks
-
-static ArakoonMemoryHooks memory_hooks = { ::malloc, ::free, ::realloc };
-
 void
 memory_set_hooks(ArakoonMemoryHooks const * const hooks)
 {
     rc_to_error(arakoon_memory_set_hooks(hooks));
-
-    memcpy(&memory_hooks, hooks, sizeof(ArakoonMemoryHooks));
 }
 
 //// buffer
@@ -178,7 +174,7 @@ buffer::reset()
 {
     if (owner_)
     {
-        memory_hooks.free(data_);
+        arakoon_mem_free(data_);
         data_ = NULL;
         owner_ = false;
     }
@@ -651,7 +647,7 @@ cluster::rc_to_error(
 
             try
             {
-                data_cpy = memory_hooks.malloc(size);
+                data_cpy = arakoon_mem_malloc(size);
                 if (data_cpy == NULL)
                 {
                     throw std::bad_alloc();
@@ -662,7 +658,7 @@ cluster::rc_to_error(
             }
             catch (...)
             {
-                memory_hooks.free(data_cpy);
+                arakoon_mem_free(data_cpy);
                 throw;
             }
 
@@ -692,7 +688,7 @@ cluster::rc_to_error_no_exc(
 
             try
             {
-                data_cpy = memory_hooks.malloc(size);
+                data_cpy = arakoon_mem_malloc(size);
                 if (data_cpy == NULL)
                 {
                     throw std::bad_alloc();
@@ -703,7 +699,7 @@ cluster::rc_to_error_no_exc(
             }
             catch (...)
             {
-                memory_hooks.free(data_cpy);
+                arakoon_mem_free(data_cpy);
                 throw;
             }
         }
@@ -745,7 +741,7 @@ cluster::hello(
 
     std::shared_ptr<std::string> result_ptr(new std::string(result));
 
-    memory_hooks.free(result);
+    arakoon_mem_free(result);
     result = NULL;
 
     return result_ptr;
@@ -761,7 +757,7 @@ cluster::who_master(
 
     std::shared_ptr<std::string> result_ptr(new std::string(result));
 
-    memory_hooks.free(result);
+    arakoon_mem_free(result);
     result = NULL;
 
     return result_ptr;
