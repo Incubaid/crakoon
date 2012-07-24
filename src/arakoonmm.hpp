@@ -220,37 +220,40 @@ class error : public std::exception
     buffer_ptr buffer_ptr_;
 };
 
-#define DEF_ERROR(__name, __rc) \
-    class __name : public error \
-    { \
-      public: \
-        __name() : error() {} \
-        explicit __name(buffer_ptr const buffer_ptr) : error(buffer_ptr) {} \
-        rc rc_get() const { return __rc; } \
-        __name(__name const & rhs) : error() { buffer_ptr_ = rhs.buffer_ptr_; } \
-        __name & operator=(__name const & rhs) { if (this != &rhs) { buffer_ptr_ = rhs.buffer_ptr_; } return *this; } \
-    };
+template <rc Rc_code>
+class specific_error : public error
+{
+  public:
+    explicit specific_error(buffer_ptr const buffer_ptr)
+        :   error(buffer_ptr)
+    {
+    }
 
-DEF_ERROR(error_no_magic, ARAKOON_RC_NO_MAGIC);
-DEF_ERROR(error_too_many_dead_nodes, ARAKOON_RC_TOO_MANY_DEAD_NODES);
-DEF_ERROR(error_no_hello, ARAKOON_RC_NO_HELLO);
-DEF_ERROR(error_not_master, ARAKOON_RC_NOT_MASTER);
-DEF_ERROR(error_not_found, ARAKOON_RC_NOT_FOUND);
-DEF_ERROR(error_wrong_cluster, ARAKOON_RC_WRONG_CLUSTER);
-DEF_ERROR(error_nursery_range_error, ARAKOON_RC_NURSERY_RANGE_ERROR);
-DEF_ERROR(error_assertion_failed, ARAKOON_RC_ASSERTION_FAILED);
-DEF_ERROR(error_read_only, ARAKOON_RC_READ_ONLY);
-DEF_ERROR(error_unknown_failure, ARAKOON_RC_UNKNOWN_FAILURE);
+    rc rc_get() const
+    {
+        return Rc_code;
+    }
+};
 
-DEF_ERROR(error_client_network_error, ARAKOON_RC_CLIENT_NETWORK_ERROR);
-DEF_ERROR(error_client_unknown_node, ARAKOON_RC_CLIENT_UNKNOWN_NODE);
-DEF_ERROR(error_client_master_not_found, ARAKOON_RC_CLIENT_MASTER_NOT_FOUND);
-DEF_ERROR(error_client_not_connected, ARAKOON_RC_CLIENT_NOT_CONNECTED);
-DEF_ERROR(error_client_timeout, ARAKOON_RC_CLIENT_TIMEOUT);
-DEF_ERROR(error_client_nursery_invalid_routing, ARAKOON_RC_CLIENT_NURSERY_INVALID_ROUTING);
-DEF_ERROR(error_client_nursery_invalid_config, ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG);
+typedef specific_error<ARAKOON_RC_NO_MAGIC> error_no_magic;
+typedef specific_error<ARAKOON_RC_TOO_MANY_DEAD_NODES> error_too_many_dead_nodes;
+typedef specific_error<ARAKOON_RC_NO_HELLO> error_no_hello;
+typedef specific_error<ARAKOON_RC_NOT_MASTER> error_not_master;
+typedef specific_error<ARAKOON_RC_NOT_FOUND> error_not_found;
+typedef specific_error<ARAKOON_RC_WRONG_CLUSTER> error_wrong_cluster;
+typedef specific_error<ARAKOON_RC_NURSERY_RANGE_ERROR> error_nursery_range_error;
+typedef specific_error<ARAKOON_RC_ASSERTION_FAILED> error_assertion_failed;
+typedef specific_error<ARAKOON_RC_READ_ONLY> error_read_only;
+typedef specific_error<ARAKOON_RC_UNKNOWN_FAILURE> error_unknown_failure;
 
-#undef DEF_ERROR
+typedef specific_error<ARAKOON_RC_CLIENT_NETWORK_ERROR> error_client_network_error;
+typedef specific_error<ARAKOON_RC_CLIENT_UNKNOWN_NODE> error_client_unknown_node;
+typedef specific_error<ARAKOON_RC_CLIENT_MASTER_NOT_FOUND> error_client_master_not_found;
+typedef specific_error<ARAKOON_RC_CLIENT_NOT_CONNECTED> error_client_not_connected;
+typedef specific_error<ARAKOON_RC_CLIENT_TIMEOUT> error_client_timeout;
+typedef specific_error<ARAKOON_RC_CLIENT_NURSERY_INVALID_ROUTING> error_client_nursery_invalid_routing;
+typedef specific_error<ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG> error_client_nursery_invalid_config;
+
 /** @} */ // error_group
 
 /** \defgroup data_structures_group Data structures

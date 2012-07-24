@@ -24,7 +24,7 @@
 #include "arakoonmm.hpp"
 
 #include <stdexcept>
-
+#include <system_error>
 #include <string.h>
 
 extern arakoon_rc arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks) ARAKOON_GNUC_NONNULL;
@@ -64,7 +64,7 @@ error::what() const throw()
 static void
 rc_to_error(
     rc const rc,
-    buffer_ptr const buffer_ptr)
+    buffer_ptr const buffer_ptr = buffer_ptr())
 {
     if (ARAKOON_RC_IS_SUCCESS(rc))
     {
@@ -79,7 +79,7 @@ rc_to_error(
         }
         else
         {
-            throw std::runtime_error(strerror(ARAKOON_RC_AS_ERRNO(rc)));
+            throw std::system_error(ARAKOON_RC_AS_ERRNO(rc), std::system_category());
         }
     }
 
@@ -126,13 +126,6 @@ rc_to_error(
     }
 
     throw error_unknown_failure(buffer_ptr);
-}
-
-static void
-rc_to_error(
-    rc const rc)
-{
-    rc_to_error(rc, buffer_ptr());
 }
 
 //// memory hooks
@@ -343,7 +336,7 @@ value_list::size() const
     ssize_t size = arakoon_value_list_size(list_);
     if (size < 0)
     {
-        throw std::runtime_error(strerror(errno));
+        throw std::system_error(errno, std::system_category());
     }
 
     return (size_t) size;
@@ -465,7 +458,7 @@ key_value_list::size() const
     ssize_t size = arakoon_key_value_list_size(list_);
     if (size < 0)
     {
-        throw std::runtime_error(strerror(errno));
+        throw std::system_error(errno, std::system_category());
     }
 
     return (size_t) size;
@@ -713,7 +706,7 @@ cluster::hello(
 
     std::shared_ptr<std::string> result_ptr(new std::string(result));
 
-    free(result);
+    memory_hooks.free(result);
     result = NULL;
 
     return result_ptr;
@@ -729,7 +722,7 @@ cluster::who_master(
 
     std::shared_ptr<std::string> result_ptr(new std::string(result));
 
-    free(result);
+    memory_hooks.free(result);
     result = NULL;
 
     return result_ptr;
