@@ -63,10 +63,10 @@ error::what() const throw()
     return arakoon_strerror(rc_get());
 }
 
-static void
+void
 rc_to_error(
     rc const rc,
-    buffer_ptr const buffer_ptr = buffer_ptr())
+    buffer_ptr const buffer_ptr)
 {
     if (ARAKOON_RC_IS_SUCCESS(rc))
     {
@@ -675,6 +675,43 @@ cluster::rc_to_error(
     }
 }
 
+std::pair<rc, buffer_ptr>
+cluster::rc_to_error_no_exc(
+    rc const rc1)
+{
+    buffer_ptr buffer_ptr;
+
+    if (!ARAKOON_RC_IS_SUCCESS(rc1))
+    {
+        void const * data = NULL;
+        size_t size = 0;
+        rc const rc2 = arakoon_cluster_get_last_error(cluster_, &size, &data);
+        if (ARAKOON_RC_IS_SUCCESS(rc2) && (data != NULL) && (size != 0))
+        {
+            void * data_cpy = NULL;
+
+            try
+            {
+                data_cpy = memory_hooks.malloc(size);
+                if (data_cpy == NULL)
+                {
+                    throw std::bad_alloc();
+                }
+                memcpy(data_cpy, data, size);
+
+                buffer_ptr.reset(new buffer(data_cpy, size, true));
+            }
+            catch (...)
+            {
+                memory_hooks.free(data_cpy);
+                throw;
+            }
+        }
+    }
+
+    return std::make_pair(rc1, buffer_ptr);
+}
+
 std::string
 cluster::get_cluster_name() const
 {
@@ -763,6 +800,25 @@ cluster::get(
     rc_to_error(arakoon_get(cluster_, (options ? options->get() : NULL), key.size(), key.data(), &result_value_size, &result_value_data));
 
     return buffer_ptr(new buffer(result_value_data, result_value_size, true));
+}
+
+std::pair<rc, buffer_ptr>
+cluster::get_no_exc(
+    client_call_options const * const options,
+    buffer const & key)
+{
+    size_t result_value_size = 0;
+    void * result_value_data = NULL;
+
+    rc rc = arakoon_get(cluster_, (options ? options->get() : NULL), key.size(), key.data(), &result_value_size, &result_value_data);
+    if (ARAKOON_RC_IS_SUCCESS(rc))
+    {
+        return std::make_pair(rc, buffer_ptr(new buffer(result_value_data, result_value_size, true)));
+    }
+    else
+    {
+        return rc_to_error_no_exc(rc);
+    }
 }
 
 value_list_const_ptr
@@ -900,11 +956,28 @@ cluster::sequence(
     rc_to_error(arakoon_sequence(cluster_, (options ? options->get() : NULL), sequence.get()));
 }
 
-void cluster::synced_sequence(
+std::pair<rc, buffer_ptr>
+cluster::sequence_no_exc(
+    client_call_options const * const options,
+    arakoon::sequence const & sequence)
+{
+    return rc_to_error_no_exc(arakoon_sequence(cluster_, (options ? options->get() : NULL), sequence.get()));
+}
+
+void
+cluster::synced_sequence(
     client_call_options const * const options,
     arakoon::sequence const & sequence)
 {
     rc_to_error(arakoon_synced_sequence(cluster_, (options ? options->get() : NULL), sequence.get()));
+}
+
+std::pair<rc, buffer_ptr>
+cluster::synced_sequence_no_exc(
+    client_call_options const * const options,
+    arakoon::sequence const & sequence)
+{
+    return rc_to_error_no_exc(arakoon_synced_sequence(cluster_, (options ? options->get() : NULL), sequence.get()));
 }
 
 } // namespace arakoon

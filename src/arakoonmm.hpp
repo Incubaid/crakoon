@@ -36,6 +36,7 @@
 #include <memory>
 #include <string>
 #include <exception>
+#include <utility>
 
 /**
  * \namespace arakoon
@@ -262,6 +263,10 @@ typedef specific_error<ARAKOON_RC_CLIENT_NOT_CONNECTED> error_client_not_connect
 typedef specific_error<ARAKOON_RC_CLIENT_TIMEOUT> error_client_timeout;
 typedef specific_error<ARAKOON_RC_CLIENT_NURSERY_INVALID_ROUTING> error_client_nursery_invalid_routing;
 typedef specific_error<ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG> error_client_nursery_invalid_config;
+
+void rc_to_error(
+    rc const rc,
+    buffer_ptr const buffer_ptr = buffer_ptr());
 
 /** @} */ // error_group
 
@@ -633,6 +638,16 @@ class cluster
         buffer const & key);
 
     /**
+     * \brief Send a 'get' call to the server.
+     * \param options Options, or NULL for default options.
+     * \return On success: a pair of ARAKOON_RC_SUCCESS and the value associated with the key.
+     *         On error: a pair of error code and, if available, error buffer.
+     */
+    std::pair<rc, buffer_ptr> get_no_exc(
+        client_call_options const * const options,
+        buffer const & key);
+
+    /**
      * \brief Send a 'multi-get' call to the server.
      * \param options Options, or NULL for default options.
      */
@@ -735,6 +750,16 @@ class cluster
         arakoon::sequence const & sequence);
 
     /**
+     * \brief Send a 'sequence' call to the server.
+     * \param options Options, or NULL for default options.
+     * \param sequence The command sequence to execute.
+     * \return A pair of error code and, if available, error buffer.
+     */
+    std::pair<rc, buffer_ptr> sequence_no_exc(
+        client_call_options const * const options,
+        arakoon::sequence const & sequence);
+
+    /**
      * \brief Send a 'synced_sequence' call to the server.
      * \param options Options, or NULL for default options.
      * \param sequence The command sequence to execute.
@@ -743,8 +768,19 @@ class cluster
         client_call_options const * const options,
         arakoon::sequence const & sequence);
 
+    /**
+     * \brief Send a 'synced_sequence' call to the server.
+     * \param options Options, or NULL for default options.
+     * \param sequence The command sequence to execute.
+     * \return A pair of error code and, if available, error buffer.
+     */
+    std::pair<rc, buffer_ptr> synced_sequence_no_exc(
+        client_call_options const * const options,
+        arakoon::sequence const & sequence);
+
   private:
     void rc_to_error(rc const rc);
+    std::pair<rc, buffer_ptr> rc_to_error_no_exc(rc const rc);
 
     cluster(cluster const &) = delete;
     cluster & operator=(cluster const &) = delete;
