@@ -228,6 +228,11 @@ template <rc Rc_code>
 class specific_error : public error
 {
   public:
+    specific_error()
+        :   error()
+    {
+    }
+
     explicit specific_error(buffer_ptr const buffer_ptr)
         :   error(buffer_ptr)
     {
