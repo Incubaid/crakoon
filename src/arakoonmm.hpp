@@ -33,9 +33,6 @@
 
 #include "arakoon.h"
 
-// use arakoon::memory_set_hooks instead
-#undef arakoon_memory_set_hooks
-
 #include <memory>
 #include <string>
 #include <exception>
