@@ -1208,3 +1208,55 @@ arakoon_rc arakoon_rev_range_entries(ArakoonCluster *cluster,
                 max_elements,
                 result);
 }
+
+arakoon_rc arakoon_delete_prefix(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t prefix_size, const void * const prefix,
+    uint32_t * result) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
+
+        FUNCTION_ENTER(arakoon_delete_prefix);
+
+        _arakoon_cluster_reset_last_error(cluster);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(prefix);
+        ASSERT_NON_NULL_RC(result);
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
+
+        ARAKOON_CLUSTER_GET_MASTER(cluster, master);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN
+                + ARAKOON_PROTOCOL_STRING_LEN(prefix_size);
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x27, 0x00);
+        ARAKOON_PROTOCOL_WRITE_STRING(c, prefix, prefix_size);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        WRITE_BYTES(master, command, len, rc, &timeout);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
+        HANDLE_ERROR(rc, master, cluster, &timeout);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_UINT32(master, *result, rc, &timeout);
+        if(!ARAKOON_RC_IS_SUCCESS(rc)) {
+                *result = 0;
+        }
+
+        return rc;
+}

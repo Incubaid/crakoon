@@ -1105,6 +1105,19 @@ arakoon_rc arakoon_rev_range_entries(ArakoonCluster *cluster,
     const ssize_t max_elements,
     ArakoonKeyValueList **result) ARAKOON_GNUC_NONNULL2(1, 10)
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'delete_prefix' call to the server
+ *
+ * Remove all key-value pairs from the store for which the key matches the given
+ * prefix.
+ *
+ * The result (the number of entries removed from the store) will be stored at
+ * 'result'.
+ */
+arakoon_rc arakoon_delete_prefix(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t prefix_size, const void * const prefix,
+    uint32_t * result) ARAKOON_GNUC_NONNULL3(1, 4, 5)
+    ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 #endif /* ARAKOON_H_EXPORT_PROCEDURES */
 

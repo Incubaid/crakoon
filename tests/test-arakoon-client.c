@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
         char *s0 = NULL, *s1 = NULL;
         ArakoonSequence *seq = NULL;
         int i = 0;
+        uint32_t uint32 = 0;
 
         Node *fst = NULL, *n = NULL, *the_node = NULL;
         const char *name = NULL;
@@ -287,6 +288,29 @@ int main(int argc, char **argv) {
 
         arakoon_key_value_list_iter_free(iter1);
         arakoon_key_value_list_free(r1);
+
+
+        rc = arakoon_set(c, NULL, 3, "dp1", 5, "value");
+        ABORT_IF_NOT_SUCCESS(rc, "delete_prefix arakoon_set");
+        rc = arakoon_set(c, NULL, 3, "dp2", 5, "value");
+        ABORT_IF_NOT_SUCCESS(rc, "delete_prefix arakoon_set");
+        rc = arakoon_set(c, NULL, 3, "dp3", 5, "value");
+        ABORT_IF_NOT_SUCCESS(rc, "delete_prefix arakoon_set");
+        rc = arakoon_set(c, NULL, 3, "dp4", 5, "value");
+        ABORT_IF_NOT_SUCCESS(rc, "delete_prefix arakoon_set");
+        rc = arakoon_set(c, NULL, 3, "dp5", 5, "value");
+        ABORT_IF_NOT_SUCCESS(rc, "delete_prefix arakoon_set");
+        rc = arakoon_delete_prefix(c, NULL, 2, "dp", &uint32);
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_delete_prefix");
+        if(uint32 != 5) {
+                fprintf(stderr, "Unexpected number of deleted: %d\n", uint32);
+                abort();
+        }
+        rc = arakoon_get(c, NULL, 3, "dp1", &l0, &d0);
+        if(rc != ARAKOON_RC_NOT_FOUND) {
+                fprintf(stderr, "Unexpected value for key 'dp1' found\n");
+                abort();
+        }
 
 
         arakoon_client_call_options_free(options);
