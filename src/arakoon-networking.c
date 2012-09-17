@@ -120,6 +120,8 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
         }
 
         while(todo > 0) {
+                errno = 0;
+
                 if(with_timeout) {
                         /* Wait until we can write, or timeout occurs */
                         rc = clock_gettime(CLOCK_SOURCE, &now);
