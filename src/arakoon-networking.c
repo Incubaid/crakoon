@@ -21,6 +21,8 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -120,6 +122,8 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
         }
 
         while(todo > 0) {
+                errno = 0;
+
                 if(with_timeout) {
                         /* Wait until we can write, or timeout occurs */
                         rc = clock_gettime(CLOCK_SOURCE, &now);
@@ -128,6 +132,11 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
                         }
 
                         time_left = timeout_ - time_delta(&start, &now);
+
+                        if(time_left <= 0) {
+                                *timeout = 0;
+                                return ARAKOON_RC_CLIENT_TIMEOUT;
+                        }
 
                         ev_cnt = poll(&ev, 1, time_left);
 
@@ -144,11 +153,12 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
 
                         if(ev_cnt == 0) {
                                 *timeout = 0;
-                                return ARAKOON_RC_CLIENT_NETWORK_ERROR;
+                                return ARAKOON_RC_CLIENT_TIMEOUT;
                         }
 
                         if(ev.revents & POLLERR || ev.revents & POLLHUP ||
-                                ev.revents & POLLNVAL) {
+                                ev.revents & POLLNVAL ||
+                                ev.revents & POLLRDHUP) {
                                 rc = clock_gettime(CLOCK_SOURCE, &now);
                                 if(rc != 0) {
                                         return -errno;
@@ -160,6 +170,9 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
                                         return ARAKOON_RC_CLIENT_NETWORK_ERROR;
                                 }
                                 if(ev.revents & POLLHUP) {
+                                        return ARAKOON_RC_CLIENT_NOT_CONNECTED;
+                                }
+                                if(ev.revents & POLLRDHUP) {
                                         return ARAKOON_RC_CLIENT_NOT_CONNECTED;
                                 }
                                 if(ev.revents & POLLNVAL) {
