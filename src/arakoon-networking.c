@@ -21,6 +21,8 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -150,7 +152,8 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
                         }
 
                         if(ev.revents & POLLERR || ev.revents & POLLHUP ||
-                                ev.revents & POLLNVAL) {
+                                ev.revents & POLLNVAL ||
+                                ev.revents & POLLRDHUP) {
                                 rc = clock_gettime(CLOCK_SOURCE, &now);
                                 if(rc != 0) {
                                         return -errno;
@@ -162,6 +165,9 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
                                         return ARAKOON_RC_CLIENT_NETWORK_ERROR;
                                 }
                                 if(ev.revents & POLLHUP) {
+                                        return ARAKOON_RC_CLIENT_NOT_CONNECTED;
+                                }
+                                if(ev.revents & POLLRDHUP) {
                                         return ARAKOON_RC_CLIENT_NOT_CONNECTED;
                                 }
                                 if(ev.revents & POLLNVAL) {
