@@ -133,6 +133,11 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
 
                         time_left = timeout_ - time_delta(&start, &now);
 
+                        if(time_left <= 0) {
+                                *timeout = 0;
+                                return ARAKOON_RC_CLIENT_TIMEOUT;
+                        }
+
                         ev_cnt = poll(&ev, 1, time_left);
 
                         if(ev_cnt < 0) {
@@ -148,7 +153,7 @@ static arakoon_rc _arakoon_networking_poll_act(NetworkAction action,
 
                         if(ev_cnt == 0) {
                                 *timeout = 0;
-                                return ARAKOON_RC_CLIENT_NETWORK_ERROR;
+                                return ARAKOON_RC_CLIENT_TIMEOUT;
                         }
 
                         if(ev.revents & POLLERR || ev.revents & POLLHUP ||
