@@ -254,8 +254,8 @@ const char * arakoon_strerror(arakoon_rc n);
 
 /* Utility stuff */
 typedef char arakoon_bool;
-#define ARAKOON_BOOL_TRUE (1)
-#define ARAKOON_BOOL_FALSE (0)
+#define ARAKOON_BOOL_TRUE ((arakoon_bool)(1))
+#define ARAKOON_BOOL_FALSE ((arakoon_bool)(0))
 
 /* Library version information */
 /**
