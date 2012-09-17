@@ -271,8 +271,8 @@ const char * arakoon_strerror(arakoon_rc n);
 #if ARAKOON_H_EXPORT_TYPES
 
 typedef char arakoon_bool;
-#define ARAKOON_BOOL_TRUE (1)
-#define ARAKOON_BOOL_FALSE (0)
+#define ARAKOON_BOOL_TRUE ((arakoon_bool)(1))
+#define ARAKOON_BOOL_FALSE ((arakoon_bool)(0))
 
 #endif /* ARAKOON_H_EXPORT_TYPES */
 
