@@ -57,6 +57,8 @@ int main(int argc, char **argv) {
         ArakoonSequence *seq = NULL;
         int i = 0;
         uint32_t uint32 = 0;
+        int32_t major = 0, minor = 0, patch = 0;
+        char *version_info = NULL;
 
         Node *fst = NULL, *n = NULL, *the_node = NULL;
         const char *name = NULL;
@@ -312,6 +314,11 @@ int main(int argc, char **argv) {
                 abort();
         }
 
+        rc = arakoon_version(c, NULL, &major, &minor, &patch, &version_info);
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_version");
+        printf("Arakoon server version: %d.%d.%d %s\n",
+                major, minor, patch, version_info);
+        check_arakoon_free(version_info);
 
         arakoon_client_call_options_free(options);
         arakoon_cluster_free(c);

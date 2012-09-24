@@ -1260,3 +1260,68 @@ arakoon_rc arakoon_delete_prefix(ArakoonCluster *cluster,
 
         return rc;
 }
+
+arakoon_rc arakoon_version(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    int32_t * major, int32_t * minor, int32_t * patch,
+    char ** const version_info) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+        void *version_info_data = NULL;
+        size_t version_info_size = 0;
+        ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
+
+        FUNCTION_ENTER(arakoon_version);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(major);
+        ASSERT_NON_NULL_RC(minor);
+        ASSERT_NON_NULL_RC(patch);
+        ASSERT_NON_NULL_RC(version_info);
+
+        _arakoon_cluster_reset_last_error(cluster);
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
+
+        ARAKOON_CLUSTER_GET_MASTER(cluster, master);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN;
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x28, 0x00);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        rc = _arakoon_cluster_node_write_bytes(master, len, command, &timeout);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
+        HANDLE_ERROR(rc, master, cluster, &timeout);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        *version_info = NULL;
+
+        ARAKOON_PROTOCOL_READ_INT32(master, *major, rc, &timeout);
+        RETURN_IF_NOT_SUCCESS(rc);
+        ARAKOON_PROTOCOL_READ_INT32(master, *minor, rc, &timeout);
+        RETURN_IF_NOT_SUCCESS(rc);
+        ARAKOON_PROTOCOL_READ_INT32(master, *patch, rc, &timeout);
+        RETURN_IF_NOT_SUCCESS(rc);
+        ARAKOON_PROTOCOL_READ_STRING(master, version_info_data,
+                version_info_size, rc, &timeout);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        *version_info = arakoon_utils_make_string(
+                version_info_data, version_info_size);
+        RETURN_ENOMEM_IF_NULL(*version_info);
+
+        return rc;
+}

@@ -129,12 +129,15 @@
    __attribute__((__nonnull__(x, y, z)))
 # define ARAKOON_GNUC_NONNULL4(x, y, z, a) \
    __attribute__((__nonnull__(x, y, z, a)))
+# define ARAKOON_GNUC_NONNULL5(x, y, z, a, b) \
+   __attribute__((__nonnull__(x, y, z, a, b)))
 #else
 # define ARAKOON_GNUC_NONNULL
 # define ARAKOON_GNUC_NONNULL1(x)
 # define ARAKOON_GNUC_NONNULL2(x, y)
 # define ARAKOON_GNUC_NONNULL3(x, y, z)
 # define ARAKOON_GNUC_NONNULL4(x, y, z, a)
+# define ARAKOON_GNUC_NONNULL5(x, y, z, a, b)
 #endif
 
 #if __GNUC__ > 2 && defined(__OPTIMIZE__)
@@ -1117,6 +1120,16 @@ arakoon_rc arakoon_delete_prefix(ArakoonCluster *cluster,
     const ArakoonClientCallOptions * const options,
     const size_t prefix_size, const void * const prefix,
     uint32_t * result) ARAKOON_GNUC_NONNULL3(1, 4, 5)
+    ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'version' call to the server
+ *
+ * Retrieve a version number triplet from the server, as well as a free-form
+ * string containing version and build options.
+ */
+arakoon_rc arakoon_version(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    int32_t * major, int32_t * minor, int32_t * patch,
+    char ** const version_info) ARAKOON_GNUC_NONNULL5(1, 3, 4, 5, 6)
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 #endif /* ARAKOON_H_EXPORT_PROCEDURES */
