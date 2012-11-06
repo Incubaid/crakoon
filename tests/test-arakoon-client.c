@@ -320,6 +320,30 @@ int main(int argc, char **argv) {
                 major, minor, patch, version_info);
         check_arakoon_free(version_info);
 
+        /* Zero-length handling tests */
+        rc = arakoon_set(c, NULL, 3, "zl1", 0, ARAKOON_ZERO_LENGTH_DATA_PTR);
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_set zero-length");
+        rc = arakoon_test_and_set(c, NULL, 3, "zl2",
+                0, NULL,
+                0, ARAKOON_ZERO_LENGTH_DATA_PTR,
+                &l0, &d0);
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_test_and_set zero-length");
+        if(d0 != NULL) {
+                fprintf(stderr, "Unexpected value for key 'zl2': %p\n", d0);
+                abort();
+        }
+        rc = arakoon_get(c, NULL, 3, "zl2", &l0, &d0);
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_get zero-length");
+        if(d0 == NULL) {
+                fprintf(stderr, "Got NULL value for zero-length value\n");
+                abort();
+        }
+        if(l0 != 0) {
+                fprintf(stderr, "Got non-zero length for zero-length value\n");
+                abort();
+        }
+
+
         arakoon_client_call_options_free(options);
         arakoon_cluster_free(c);
 

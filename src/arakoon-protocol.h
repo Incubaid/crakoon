@@ -143,22 +143,28 @@ ARAKOON_BEGIN_DECLS
                 rc = _rc;                             \
                 break;                                \
         }                                             \
-        _d = arakoon_mem_new(_l, char);               \
-        if(_d == NULL) {                              \
-                rc = -ENOMEM;                         \
-                break;                                \
-        }                                             \
-                                                      \
-        READ_BYTES(fd, _d, _l, _rc, t);               \
-        rc = _rc;                                     \
-        if(ARAKOON_RC_IS_SUCCESS(rc)) {               \
-                a = _d;                               \
-                l = _l;                               \
+        if(_l == 0) {                                 \
+                l = 0;                                \
+                a = ARAKOON_ZERO_LENGTH_DATA_PTR;     \
         }                                             \
         else {                                        \
-                arakoon_mem_free(_d);                 \
-                l = 0;                                \
-                a = NULL;                             \
+                _d = arakoon_mem_new(_l, char);       \
+                if(_d == NULL) {                      \
+                        rc = -ENOMEM;                 \
+                        break;                        \
+                }                                     \
+                                                      \
+                READ_BYTES(fd, _d, _l, _rc, t);       \
+                rc = _rc;                             \
+                if(ARAKOON_RC_IS_SUCCESS(rc)) {       \
+                        a = _d;                       \
+                        l = _l;                       \
+                }                                     \
+                else {                                \
+                        arakoon_mem_free(_d);         \
+                        l = 0;                        \
+                        a = NULL;                     \
+                }                                     \
         }                                             \
         STMT_END
 
