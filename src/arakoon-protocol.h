@@ -116,6 +116,14 @@ ARAKOON_BEGIN_DECLS
                 r = _d;                               \
         }                                             \
         STMT_END
+#define ARAKOON_PROTOCOL_READ_INT32(fd, r, rc, t)    \
+        STMT_START                                   \
+        int32_t _d = 0;                              \
+        READ_BYTES(fd, &_d, sizeof(int32_t), rc, t); \
+        if(ARAKOON_RC_IS_SUCCESS(rc)) {              \
+                r = _d;                              \
+        }                                            \
+        STMT_END
 #define ARAKOON_PROTOCOL_READ_RC(fd, rc, t)           \
         STMT_START                                    \
         arakoon_rc _rc = 0;                           \
