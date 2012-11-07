@@ -103,7 +103,7 @@ def test_arakoon_client(valgrind):
                 'valgrind --tool=memcheck --track-fds=yes ' + \
                 '--error-exitcode=1 --leak-check=full ' + \
                 '--leak-resolution=high --show-reachable=yes ' + \
-                '--undef-value-errors=yes --trace-children=yes'
+                '--undef-value-errors=yes --trace-children=yes -v'
             args = args.split()
 
         else:
