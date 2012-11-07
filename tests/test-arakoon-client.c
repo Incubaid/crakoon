@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
         ArakoonValueListIter *iter0 = NULL;
         ArakoonKeyValueList *r1 = NULL;
         ArakoonKeyValueListIter *iter1 = NULL;
-        size_t l0 = 0, l1 = 0;
+        size_t l0 = 0, l1 = 0, l2 = 0;
         void *d0 = NULL;
         const void *v0 = NULL, *v1 = NULL;
         char *s0 = NULL, *s1 = NULL;
@@ -343,6 +343,78 @@ int main(int argc, char **argv) {
                 abort();
         }
 
+        /* Range-entries request over multiple empty values to validate
+         * ArakoonValueList free'ing */
+        for(i = 0; i < 10; i++) {
+                s0 = (char *)check_arakoon_malloc(10);
+                l0 = snprintf(s0, 10, "mevk%d", i);
+
+                if(i % 3 == 0) {
+                        l1 = 0;
+                        d0 = NULL;
+                }
+                else {
+                        l1 = 3;
+                        d0 = "foo";
+                }
+
+
+                rc = arakoon_set(c, NULL,
+                        l0, s0, l1, ARAKOON_MAYBE_ZERO_LENGTH_DATA(l1, d0));
+                check_arakoon_free(s0);
+
+                ABORT_IF_NOT_SUCCESS(rc, "arakoon_set zero-length range-entries");
+        }
+
+        rc = arakoon_range_entries(c, NULL,
+                4, "mevk", ARAKOON_BOOL_TRUE,
+                4, "mevl", ARAKOON_BOOL_FALSE,
+                -1,
+                &r1);
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_range_entries zero-length range-entries");
+
+        i = 0;
+        iter1 = arakoon_key_value_list_create_iter(r1);
+        FOR_ARAKOON_KEY_VALUE_ITER(iter1, &l0, &v0, &l1, &v1) {
+                s0 = (char *)check_arakoon_malloc(10);
+                l2 = snprintf(s0, 10, "mevk%d", i);
+
+                if(l0 != l2) {
+                        fprintf(stderr, "Unexpected key length\n");
+                        abort();
+                }
+                if(strncmp(s0, v0, l0) != 0) {
+                        fprintf(stderr, "Unexpected key\n");
+                        abort();
+                }
+
+                check_arakoon_free(s0);
+
+                if(i % 3 == 0) {
+                        if(l1 != 0) {
+                                fprintf(stderr, "Unexpected value length %zu, should be 0\n", l1);
+                                abort();
+                        }
+                        if(v1 != ARAKOON_ZERO_LENGTH_DATA_PTR) {
+                                fprintf(stderr, "Unexpected value pointer %p, but no harm done\n", v1);
+                        }
+                }
+                else {
+                        if(l1 != 3) {
+                                fprintf(stderr, "Unexpected value length %zu, should be 3\n", l1);
+                                abort();
+                        }
+                        if(strncmp(v1, "foo", 3) != 0) {
+                                fprintf(stderr, "Unexpected value\n");
+                                abort();
+                        }
+                }
+
+                i++;
+        }
+
+        arakoon_key_value_list_iter_free(iter1);
+        arakoon_key_value_list_free(r1);
 
         arakoon_client_call_options_free(options);
         arakoon_cluster_free(c);
