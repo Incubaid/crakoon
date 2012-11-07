@@ -21,6 +21,7 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -66,6 +67,8 @@ void * check_arakoon_malloc(size_t s) {
         ret = malloc(len);
 
         if(ret == NULL) {
+                fprintf(stderr, "malloc: malloc returned NULL");
+                fflush(stderr);
                 abort();
         }
 
@@ -95,9 +98,13 @@ void check_arakoon_free(void *ptr) {
         s1 = GET_SENTINEL2(ptr, s);
 
         if(s0 != SENTINEL1) {
+                fprintf(stderr, "free: Prefix sentinel corrupted");
+                fflush(stderr);
                 abort();
         }
         if(s1 != SENTINEL2) {
+                fprintf(stderr, "free: Suffix sentinel corrupted");
+                fflush(stderr);
                 abort();
         }
 
@@ -121,9 +128,13 @@ void * check_arakoon_realloc(void *ptr, size_t s) {
 
                 s0 = GET_SIZE(ptr);
                 if(GET_SENTINEL1(ptr) != SENTINEL1) {
+                        fprintf(stderr, "realloc: Prefix sentinel corrupted");
+                        fflush(stderr);
                         abort();
                 }
                 if(GET_SENTINEL2(ptr, s0) != SENTINEL2) {
+                        fprintf(stderr, "realloc: Suffix sentinel corrupted");
+                        fflush(stderr);
                         abort();
                 }
         }
@@ -131,6 +142,8 @@ void * check_arakoon_realloc(void *ptr, size_t s) {
         len = MALLOC_SIZE(s);
         ret = realloc(ptr, len);
         if(ret == NULL) {
+                fprintf(stderr, "realloc: realloc returned NULL");
+                fflush(stderr);
                 abort();
         }
 
