@@ -25,6 +25,7 @@
         do {                                       \
                 if(p == NULL) {                    \
                         fprintf(stderr, msg "\n"); \
+                        fflush(stderr);            \
                         abort();                   \
                 }                                  \
         } while(0)
@@ -32,6 +33,7 @@
         do {                                                                 \
                 if(!ARAKOON_RC_IS_SUCCESS(rc)) {                             \
                         fprintf(stderr, msg ": %s\n", arakoon_strerror(rc)); \
+                        fflush(stderr);                                      \
                         abort();                                             \
                 }                                                            \
         } while(0)
