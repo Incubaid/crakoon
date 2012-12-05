@@ -17,3 +17,6 @@ doxygen: Doxyfile
 	doxygen
 
 .PHONY: doxygen
+
+test: check
+.PHONY: test
