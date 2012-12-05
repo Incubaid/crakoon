@@ -127,6 +127,8 @@ def has_valgrind():
         return True
     except subprocess.CalledProcessError:
         return False
+    except OSError:
+        return False
 
 def main():
     if 'MAKE_DISTCHECK' in os.environ:
