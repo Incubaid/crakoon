@@ -66,6 +66,7 @@ arakoon_synced_sequence
 arakoon_assert
 arakoon_rev_range_entries
 arakoon_delete_prefix
+arakoon_version
 arakoon_library_version_info
 arakoon_library_version_major
 arakoon_library_version_micro
