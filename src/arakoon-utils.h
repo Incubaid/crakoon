@@ -75,6 +75,12 @@ extern ArakoonMemoryHooks memory_hooks;
 
 #define arakoon_mem_malloc(s) (memory_hooks.malloc(s))
 #define arakoon_mem_free(p) (memory_hooks.free(p))
+#define arakoon_mem_maybe_free(l, p) \
+        STMT_START                   \
+        if(l != 0) {                 \
+                arakoon_mem_free(p); \
+         }                           \
+        STMT_END
 #define arakoon_mem_realloc(p, s) (memory_hooks.realloc(p, s))
 
 #define arakoon_mem_new(c, t) \
