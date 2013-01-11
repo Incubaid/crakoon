@@ -249,6 +249,35 @@ int main(int argc, char **argv) {
         }
         arakoon_sequence_free(seq);
 
+
+        seq = arakoon_sequence_new();
+        rc = arakoon_sequence_add_set(seq, 3, "foo", 3, "baz");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_set");
+        rc = arakoon_sequence_add_set(seq, 3, "foz", 3, "bat");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_set");
+        rc = arakoon_sequence_add_assert_exists(seq, 3, "foo");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_assert_exists");
+        rc = arakoon_sequence_add_assert_exists(seq, 3, "foz");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_assert_exists");
+
+        rc = arakoon_synced_sequence(c, NULL, seq);
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_synced_sequence");
+
+        arakoon_sequence_free(seq);
+
+        seq = arakoon_sequence_new();
+        rc = arakoon_sequence_add_delete(seq, 3, "foz");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_delete");
+        rc = arakoon_sequence_add_assert_exists(seq, 3, "foz");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_assert");
+        rc = arakoon_sequence(c, NULL, seq);
+        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
+                fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
+                abort();
+        }
+        arakoon_sequence_free(seq);
+
+
         rc = arakoon_assert(c, NULL, 11, "assert_test", 0, NULL);
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert");
         rc = arakoon_assert(c, NULL, 11, "assert_test", 3, "foo");
@@ -266,6 +295,15 @@ int main(int argc, char **argv) {
         rc = arakoon_assert(c, NULL, 11, "assert_test", 3, "foo");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert");
 
+        rc = arakoon_assert_exists(c, NULL, 18, "assert_exists_test");
+        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
+                fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
+                abort();
+        }
+        rc = arakoon_set(c, NULL, 18, "assert_exists_test", 3, "foo");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_set");
+        rc = arakoon_assert_exists(c, NULL, 18, "assert_exists_test");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert_exists");
 
         rc = arakoon_rev_range_entries(c, options, 0, NULL, ARAKOON_BOOL_TRUE,
                 0, NULL, ARAKOON_BOOL_TRUE, -1, &r1);

@@ -727,6 +727,13 @@ arakoon_rc arakoon_sequence_add_assert(ArakoonSequence *sequence,
     const size_t key_size, const void * const key,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Add an 'assert_exists' action to the sequence
+ *
+ * Key will be copied and released on arakoon_sequence_free.
+ */
+arakoon_rc arakoon_sequence_add_assert_exists(ArakoonSequence *sequence,
+    const size_t key_size, const void * const key)
+    ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 #endif /* ARAKOON_H_EXPORT_PROCEDURES */
 /** @} */
@@ -1088,6 +1095,15 @@ arakoon_rc arakoon_assert(ArakoonCluster *cluster,
     const ArakoonClientCallOptions * const options,
     const size_t key_size, const void * const key,
     const size_t value_size, const void * const value)
+    ARAKOON_GNUC_NONNULL2(1, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send an 'assert_exists' call to the server
+ *
+ * This call doesn't produce any result, but will return
+ * ARAKOON_RC_ASSERTION_FAILED if the assertion failed.
+ */
+arakoon_rc arakoon_assert_exists(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key)
     ARAKOON_GNUC_NONNULL2(1, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 /* Send a 'rev_range_entries' call to the server
  *
