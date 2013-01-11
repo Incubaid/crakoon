@@ -57,8 +57,6 @@ int main(int argc, char **argv) {
         ArakoonSequence *seq = NULL;
         int i = 0;
         uint32_t uint32 = 0;
-        int32_t major = 0, minor = 0, patch = 0;
-        char *version_info = NULL;
 
         Node *fst = NULL, *n = NULL, *the_node = NULL;
         const char *name = NULL;
@@ -235,6 +233,30 @@ int main(int argc, char **argv) {
         arakoon_sequence_free(seq);
 
         seq = arakoon_sequence_new();
+        rc = arakoon_sequence_add_set(seq, 3, "aoo", 3, "coo");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_set");
+        rc = arakoon_sequence_add_set(seq, 4, "ao_o", 3, "__2");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_set");
+        rc = arakoon_sequence_add_assert_exists(seq, 3, "aoo");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_assert_exists");
+        rc = arakoon_sequence_add_assert_exists(seq, 4, "ao_o");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_assert_exists");
+        rc = arakoon_sequence_add_delete(seq, 3, "aoo");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_delete");
+        rc = arakoon_sequence_add_assert_exists(seq, 3, "aoo");
+        rc = arakoon_sequence(c, NULL, seq);
+        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
+                fprintf(stderr, "Assert_exists didn't fail: %s\n", arakoon_strerror(rc));
+                abort();
+        }
+        rc = arakoon_synced_sequence(c, NULL, seq);
+        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
+                fprintf(stderr, "Assert_exists didn't fail: %s\n", arakoon_strerror(rc));
+                abort();
+        }
+        arakoon_sequence_free(seq);
+
+        seq = arakoon_sequence_new();
         rc = arakoon_sequence_add_assert(seq, 4, "fail", 1, "a");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_assert");
         rc = arakoon_sequence(c, NULL, seq);
@@ -251,8 +273,6 @@ int main(int argc, char **argv) {
 
         rc = arakoon_assert(c, NULL, 11, "assert_test", 0, NULL);
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert");
-        rc = arakoon_assert_exists(c, NULL, 3, "foo");
-        ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert_exists");
         rc = arakoon_assert(c, NULL, 11, "assert_test", 3, "foo");
         if(rc != ARAKOON_RC_ASSERTION_FAILED) {
                 fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
@@ -267,6 +287,19 @@ int main(int argc, char **argv) {
         }
         rc = arakoon_assert(c, NULL, 11, "assert_test", 3, "foo");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert");
+
+        rc = arakoon_assert_exists(c, NULL, 18, "assert_exists_test");
+        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
+                fprintf(stderr, "Assert_exists fail with unset values: %s\n", arakoon_strerror(rc));
+                abort();
+        }
+        rc = arakoon_set(c, NULL, 18, "assert_exists_test", 3, "foo");
+        rc = arakoon_assert_exists(c, NULL, 18, "assert_exists_test");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert_exists");
+
+        rc = arakoon_set(c, NULL, 3, "m?m", 3, "f*f");
+        rc = arakoon_assert_exists(c, NULL, 3, "m?m");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert_exists");
 
 
         rc = arakoon_rev_range_entries(c, options, 0, NULL, ARAKOON_BOOL_TRUE,
@@ -316,11 +349,6 @@ int main(int argc, char **argv) {
                 abort();
         }
 
-        rc = arakoon_version(c, NULL, &major, &minor, &patch, &version_info);
-        ABORT_IF_NOT_SUCCESS(rc, "arakoon_version");
-        printf("Arakoon server version: %d.%d.%d %s\n",
-                major, minor, patch, version_info);
-        check_arakoon_free(version_info);
 
         arakoon_client_call_options_free(options);
         arakoon_cluster_free(c);
