@@ -52,6 +52,37 @@
  * dealing with cluster or node names). Generic byte sequences, e.g. keys or
  * values, are encoded using the second system.
  *
+ * Since some Arakoon calls take or return 'option' values, the use of `NULL`
+ * can be overloaded. As such we decided on the following scheme:
+ *
+ * - The length of a `Nothing` value can be any value (including 0), and the
+ *   data pointer is `NULL`.
+ * - The length of a zero-length non-`Nothing` value is 0, and the data pointer
+ *   is any non-`NULL` pointer (e.g. `ARAKOON_ZERO_LENGTH_DATA_PTR`).
+ * - The length of a non-zero-length non-`Nothing` value is a non-0 value, and
+ *   the data pointer is non-`NULL`.
+ *
+ * This implies it's not allowed to pass a `NULL`-pointer to `arakoon_set`,
+ * since this doesn't take an 'option' value. As such, in case your code might
+ * get into a path where a zero-length value could be stored, and the value
+ * pointer might be `NULL` (due to other parts of the application), something
+ * like this snippet could be used:
+ *
+ * \code{.c}
+ * arakoon_rc set_mykey_value(ArakoonCluster *cluster,
+ *     size_t len, const void * value) {
+ *     return arakoon_set(cluster, NULL,
+ *         "mykey", 5,
+ *         len, ARAKOON_MAYBE_ZERO_LENGTH_DATA(len, value));
+ * }
+ * \endcode
+ *
+ * There's no reason to use this pattern in a code-path where a value is never
+ * supposed to be of zero-length!
+ *
+ * Note this means some calls can return a non-`NULL` pointer which should never
+ * be `free`'d!
+ *
  * \par Memory handling
  * The memory handling procedures to be used by Crakoon can be set through
  * arakoon_memory_set_hooks. The `malloc`, `free` and `realloc` functions can be
@@ -330,6 +361,30 @@ char * arakoon_utils_make_string(void *data, size_t length)
     ARAKOON_GNUC_NONNULL ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 #endif /* ARAKOON_H_EXPORT_PROCEDURES */
+
+#if ARAKOON_H_EXPORT_TYPES
+/**
+ * \brief Placeholder for zero-length strings
+ *
+ * This is (intentionally) a pointer to 0x01, which is not equal to NULL, but
+ * should, similar to a NULL-pointer, result in a segfault if dereferenced.
+ *
+ * It is not guaranteed this value will be used for all zero-length data
+ * pointers!
+ *
+ * \since 1.2
+ */
+#define ARAKOON_ZERO_LENGTH_DATA_PTR ((void *)(0x01))
+
+/**
+ * \brief Turn a potential NULL-pointer into a valid address for zero-length
+ * strings
+ *
+ * \since 1.2
+ */
+#define ARAKOON_MAYBE_ZERO_LENGTH_DATA(l, s) \
+        ((((l) == 0) && ((s) == NULL)) ? ARAKOON_ZERO_LENGTH_DATA_PTR : s)
+#endif
 
 /** @} */
 

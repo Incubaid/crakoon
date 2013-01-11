@@ -143,22 +143,28 @@ ARAKOON_BEGIN_DECLS
                 rc = _rc;                             \
                 break;                                \
         }                                             \
-        _d = arakoon_mem_new(_l, char);               \
-        if(_d == NULL) {                              \
-                rc = -ENOMEM;                         \
-                break;                                \
-        }                                             \
-                                                      \
-        READ_BYTES(fd, _d, _l, _rc, t);               \
-        rc = _rc;                                     \
-        if(ARAKOON_RC_IS_SUCCESS(rc)) {               \
-                a = _d;                               \
-                l = _l;                               \
+        if(_l == 0) {                                 \
+                l = 0;                                \
+                a = ARAKOON_ZERO_LENGTH_DATA_PTR;     \
         }                                             \
         else {                                        \
-                arakoon_mem_free(_d);                 \
-                l = 0;                                \
-                a = NULL;                             \
+                _d = arakoon_mem_new(_l, char);       \
+                if(_d == NULL) {                      \
+                        rc = -ENOMEM;                 \
+                        break;                        \
+                }                                     \
+                                                      \
+                READ_BYTES(fd, _d, _l, _rc, t);       \
+                rc = _rc;                             \
+                if(ARAKOON_RC_IS_SUCCESS(rc)) {       \
+                        a = _d;                       \
+                        l = _l;                       \
+                }                                     \
+                else {                                \
+                        arakoon_mem_free(_d);         \
+                        l = 0;                        \
+                        a = NULL;                     \
+                }                                     \
         }                                             \
         STMT_END
 
@@ -219,7 +225,7 @@ ARAKOON_BEGIN_DECLS
                                 /* TODO This introduces a useless memcpy */ \
                                 _rsl_rc = _arakoon_value_list_prepend(a,    \
                                         _rsl_l, _rsl_s);                    \
-                                arakoon_mem_free(_rsl_s);                   \
+                                arakoon_mem_maybe_free(_rsl_l, _rsl_s);     \
                                                                             \
                                 if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {       \
                                         break;                              \
@@ -256,7 +262,7 @@ ARAKOON_BEGIN_DECLS
                                 ARAKOON_PROTOCOL_READ_STRING(fd, _rsl_s1,          \
                                         _rsl_l1, _rsl_rc, t);                      \
                                 if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {              \
-                                        arakoon_mem_free(_rsl_s0);                 \
+                                        arakoon_mem_maybe_free(_rsl_l0, _rsl_s0);  \
                                         break;                                     \
                                 }                                                  \
                                 else {                                             \
@@ -265,8 +271,8 @@ ARAKOON_BEGIN_DECLS
                                         _rsl_rc = _arakoon_key_value_list_prepend( \
                                                 a, _rsl_l0, _rsl_s0, _rsl_l1,      \
                                                 _rsl_s1);                          \
-                                        arakoon_mem_free(_rsl_s0);                 \
-                                        arakoon_mem_free(_rsl_s1);                 \
+                                        arakoon_mem_maybe_free(_rsl_l0, _rsl_s0);  \
+                                        arakoon_mem_maybe_free(_rsl_l1, _rsl_s1);  \
                                                                                    \
                                         if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {      \
                                                 break;                             \

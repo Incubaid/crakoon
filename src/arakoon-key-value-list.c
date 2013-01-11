@@ -68,24 +68,38 @@ arakoon_rc _arakoon_key_value_list_prepend(ArakoonKeyValueList *list,
         item = arakoon_mem_new(1, ArakoonKeyValueListItem);
         RETURN_ENOMEM_IF_NULL(item);
 
-        item->key = arakoon_mem_malloc(key_size);
-        if(item->key == NULL) {
-                arakoon_mem_free(item);
-                return -ENOMEM;
+        if(key_size == 0) {
+                item->key = ARAKOON_ZERO_LENGTH_DATA_PTR;
+        }
+        else {
+                item->key = arakoon_mem_malloc(key_size);
+                if(item->key == NULL) {
+                        arakoon_mem_free(item);
+                        return -ENOMEM;
+                }
         }
 
-        item->value = arakoon_mem_malloc(value_size);
-        if(item->value == NULL) {
-                arakoon_mem_free(item->key);
-                arakoon_mem_free(item);
-                return -ENOMEM;
+        if(value_size == 0) {
+                item->value = ARAKOON_ZERO_LENGTH_DATA_PTR;
+        }
+        else {
+                item->value = arakoon_mem_malloc(value_size);
+                if(item->value == NULL) {
+                        arakoon_mem_free(item->key);
+                        arakoon_mem_free(item);
+                        return -ENOMEM;
+                }
         }
 
         item->next = list->first;
         item->key_size = key_size;
-        memcpy(item->key, key, key_size);
+        if(key_size != 0) {
+                memcpy(item->key, key, key_size);
+        }
         item->value_size = value_size;
-        memcpy(item->value, value, value_size);
+        if(value_size != 0) {
+                memcpy(item->value, value, value_size);
+        }
 
         list->first = item;
         list->size = list->size + 1;
@@ -107,10 +121,10 @@ static void arakoon_key_value_list_item_free(
 
         RETURN_IF_NULL(item);
 
+        arakoon_mem_maybe_free(item->key_size, item->key);
         item->key_size = 0;
-        arakoon_mem_free(item->key);
+        arakoon_mem_maybe_free(item->value_size, item->value);
         item->value_size = 0;
-        arakoon_mem_free(item->value);
 
         arakoon_mem_free(item);
 }
