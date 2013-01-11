@@ -50,8 +50,8 @@ typedef struct ArakoonSequenceItem ArakoonSequenceItem;
 typedef enum {
         ARAKOON_SEQUENCE_ITEM_TYPE_SET,
         ARAKOON_SEQUENCE_ITEM_TYPE_DELETE,
-        ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT_EXISTS,
-        ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT
+        ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT,
+        ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT_EXISTS
 } ArakoonSequenceItemType;
 
 struct ArakoonSequenceItem {
