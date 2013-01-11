@@ -728,6 +728,10 @@ arakoon_rc arakoon_sequence_add_assert(ArakoonSequence *sequence,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
+arakoon_rc arakoon_sequence_add_assert_exists(ArakoonSequence *sequence,
+    const size_t key_size, const void * const key)
+    ARAKOON_GNUC_NONNULL2(1, 3) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+
 #endif /* ARAKOON_H_EXPORT_PROCEDURES */
 /** @} */
 
@@ -1089,6 +1093,12 @@ arakoon_rc arakoon_assert(ArakoonCluster *cluster,
     const size_t key_size, const void * const key,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_NONNULL2(1, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+
+arakoon_rc arakoon_assert_exists(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key)
+    ARAKOON_GNUC_NONNULL2(1, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
+
 /* Send a 'rev_range_entries' call to the server
  *
  * 'begin_key' and 'end_key' can be set to NULL to denote 'None'.

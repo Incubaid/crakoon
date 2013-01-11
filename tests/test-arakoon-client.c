@@ -251,6 +251,8 @@ int main(int argc, char **argv) {
 
         rc = arakoon_assert(c, NULL, 11, "assert_test", 0, NULL);
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert");
+        rc = arakoon_assert_exists(c, NULL, 3, "foo");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert_exists");
         rc = arakoon_assert(c, NULL, 11, "assert_test", 3, "foo");
         if(rc != ARAKOON_RC_ASSERTION_FAILED) {
                 fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
@@ -325,3 +327,4 @@ int main(int argc, char **argv) {
 
         return 0;
 }
+

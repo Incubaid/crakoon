@@ -474,6 +474,9 @@ class sequence
         buffer const & key,
         buffer const & value);
 
+    void add_assert_exists(
+        buffer const & key);
+
     ArakoonSequence const * get() const;
 
   private:
