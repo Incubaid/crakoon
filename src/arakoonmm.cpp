@@ -502,13 +502,6 @@ sequence::add_assert(
     rc_to_error(arakoon_sequence_add_assert(sequence_, key.size(), key.data(), value.size(), value.data()));
 }
 
-void
-sequence::add_assert_exists(
-    buffer const & key)
-{
-    rc_to_error(arakoon_sequence_add_assert_exists(sequence_, key.size(), key.data()));
-}
-
 ArakoonSequence const *
 sequence::get() const
 {
