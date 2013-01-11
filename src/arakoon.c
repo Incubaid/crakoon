@@ -103,7 +103,7 @@ static void arakoon_sequence_item_free(ArakoonSequenceItem *item) {
                         arakoon_mem_free(item->data.assert.value);
                 }; break;
                 case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT_EXISTS: {
-                        arakoon_mem_free(item->data.assert.key);
+                        arakoon_mem_free(item->data.assert_exists.key);
                 }; break;
                 default: {
                         _arakoon_log_fatal("Unknown sequence item type");
@@ -250,7 +250,7 @@ arakoon_rc arakoon_sequence_add_assert_exists(ArakoonSequence *sequence,
 
         OUVERTURE(ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT_EXISTS);
 
-        COPY_STRING(assert, key);
+        COPY_STRING(assert_exists, key);
 
         POSTLUDIUM(arakoon_sequence_add_assert_exists);
 }
@@ -1038,7 +1038,7 @@ static arakoon_rc _arakoon_sequence_impl(char code,
                                     item->data.assert.value, item->data.assert.value_size));
                         }; break;
                         case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT_EXISTS: {
-                                I(ARAKOON_PROTOCOL_STRING_LEN(item->data.assert.key_size));
+                                I(ARAKOON_PROTOCOL_STRING_LEN(item->data.assert_exists.key_size));
                         }; break;
                         default: {
                                 _arakoon_log_fatal("Invalid sequence type");
@@ -1109,8 +1109,8 @@ static arakoon_rc _arakoon_sequence_impl(char code,
                                 WRITE_UINT32(8);
                         }; break;
                         case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT_EXISTS: {
-                                WRITE_STRING(item->data.assert.key,
-                                        item->data.assert.key_size);
+                                WRITE_STRING(item->data.assert_exists.key,
+                                        item->data.assert_exists.key_size);
                                 WRITE_UINT32(15);
                         }; break;
                         default: {
