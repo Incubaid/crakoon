@@ -122,7 +122,7 @@ ArakoonSequence * arakoon_sequence_new(void) {
         ArakoonSequence * sequence = NULL;
 
         FUNCTION_ENTER(arakoon_sequence_new);
-        
+
         sequence = arakoon_mem_new(1, ArakoonSequence);
         RETURN_NULL_IF_NULL(sequence);
 
@@ -1231,43 +1231,43 @@ arakoon_rc arakoon_assert_exists(ArakoonCluster *cluster,
         arakoon_rc rc = 0;
         ArakoonClusterNode *master = NULL;
         int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
-        
+
         FUNCTION_ENTER(arakoon_assert_exists);
-        
+
         _arakoon_cluster_reset_last_error(cluster);
-        
+
         ASSERT_NON_NULL_RC(cluster);
         ASSERT_NON_NULL_RC(key);
-        
+
         READ_OPTIONS;
         timeout = arakoon_client_call_options_get_timeout(options_);
-        
+
         ARAKOON_CLUSTER_GET_MASTER(cluster, master);
-        
+
         len = ARAKOON_PROTOCOL_COMMAND_LEN
                 + ARAKOON_PROTOCOL_BOOL_LEN
                 + ARAKOON_PROTOCOL_STRING_LEN(key_size);
-        
+
         command = arakoon_mem_new(len, char);
         RETURN_ENOMEM_IF_NULL(command);
-        
+
         c = command;
-        
+
         ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x29, 0x00);
         ARAKOON_PROTOCOL_WRITE_BOOL(c,
                 arakoon_client_call_options_get_allow_dirty(options_));
         ARAKOON_PROTOCOL_WRITE_STRING(c, key, key_size);
-        
+
         ASSERT_ALL_WRITTEN(command, c, len);
-        
+
         WRITE_BYTES(master, command, len, rc, &timeout);
         arakoon_mem_free(command);
         RETURN_IF_NOT_SUCCESS(rc);
-        
+
         ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
-        
+
         HANDLE_ERROR(rc, master, cluster, &timeout);
-        
+
         return rc;
 }
 
