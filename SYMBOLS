@@ -29,6 +29,7 @@ arakoon_sequence_free
 arakoon_sequence_add_set
 arakoon_sequence_add_delete
 arakoon_sequence_add_assert
+arakoon_sequence_add_assert_exists
 
 arakoon_client_call_options_new
 arakoon_client_call_options_free
@@ -64,6 +65,7 @@ arakoon_test_and_set
 arakoon_sequence
 arakoon_synced_sequence
 arakoon_assert
+arakoon_assert_exists
 arakoon_rev_range_entries
 arakoon_delete_prefix
 arakoon_library_version_info
