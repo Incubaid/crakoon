@@ -1097,6 +1097,7 @@ arakoon_rc arakoon_assert(ArakoonCluster *cluster,
     const size_t value_size, const void * const value)
     ARAKOON_GNUC_NONNULL2(1, 4) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 /* Send an 'assert_exists' call to the server
+ *
  * This call doesn't produce any result, but will return
  * ARAKOON_RC_ASSERTION_FAILED if the assertion failed.
  */
