@@ -235,6 +235,21 @@ int main(int argc, char **argv) {
         arakoon_sequence_free(seq);
 
         seq = arakoon_sequence_new();
+        rc = arakoon_sequence_add_assert(seq, 4, "fail", 1, "a");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_assert");
+        rc = arakoon_sequence(c, NULL, seq);
+        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
+                fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
+                abort();
+        }
+        rc = arakoon_synced_sequence(c, NULL, seq);
+        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
+                fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
+                abort();
+        }
+        arakoon_sequence_free(seq);
+
+        seq = arakoon_sequence_new();
         rc = arakoon_sequence_add_set(seq, 3, "aoo", 3, "coo");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_set");
         rc = arakoon_sequence_add_set(seq, 4, "ao_o", 3, "__2");
@@ -254,21 +269,6 @@ int main(int argc, char **argv) {
         rc = arakoon_synced_sequence(c, NULL, seq);
         if(rc != ARAKOON_RC_ASSERTION_FAILED) {
                 fprintf(stderr, "Assert_exists didn't fail: %s\n", arakoon_strerror(rc));
-                abort();
-        }
-        arakoon_sequence_free(seq);
-
-        seq = arakoon_sequence_new();
-        rc = arakoon_sequence_add_assert(seq, 4, "fail", 1, "a");
-        ABORT_IF_NOT_SUCCESS(rc, "arakoon_sequence_add_assert");
-        rc = arakoon_sequence(c, NULL, seq);
-        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
-                fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
-                abort();
-        }
-        rc = arakoon_synced_sequence(c, NULL, seq);
-        if(rc != ARAKOON_RC_ASSERTION_FAILED) {
-                fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
                 abort();
         }
         arakoon_sequence_free(seq);
