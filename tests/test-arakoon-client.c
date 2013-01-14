@@ -292,17 +292,13 @@ int main(int argc, char **argv) {
 
         rc = arakoon_assert_exists(c, NULL, 18, "assert_exists_test");
         if(rc != ARAKOON_RC_ASSERTION_FAILED) {
-                fprintf(stderr, "Assert_exists fail with unset values: %s\n", arakoon_strerror(rc));
+                fprintf(stderr, "Assertion didn't fail: %s\n", arakoon_strerror(rc));
                 abort();
         }
         rc = arakoon_set(c, NULL, 18, "assert_exists_test", 3, "foo");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_set");
         rc = arakoon_assert_exists(c, NULL, 18, "assert_exists_test");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert_exists");
-
-        rc = arakoon_set(c, NULL, 3, "m?m", 3, "f*f");
-        rc = arakoon_assert_exists(c, NULL, 3, "m?m");
-        ABORT_IF_NOT_SUCCESS(rc, "arakoon_assert_exists");
-
 
         rc = arakoon_rev_range_entries(c, options, 0, NULL, ARAKOON_BOOL_TRUE,
                 0, NULL, ARAKOON_BOOL_TRUE, -1, &r1);
