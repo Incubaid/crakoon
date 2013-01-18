@@ -265,8 +265,10 @@ typedef specific_error<ARAKOON_RC_CLIENT_NURSERY_INVALID_ROUTING> error_client_n
 typedef specific_error<ARAKOON_RC_CLIENT_NURSERY_INVALID_CONFIG> error_client_nursery_invalid_config;
 
 void rc_to_error(
+    rc const rc);
+void rc_to_error(
     rc const rc,
-    buffer_ptr const buffer_ptr = buffer_ptr());
+    buffer_ptr const buffer_ptr);
 
 /** @} */ // error_group
 
