@@ -66,6 +66,13 @@ error::what() const throw()
 
 void
 rc_to_error(
+    rc const rc)
+{
+    rc_to_error(rc, buffer_ptr());
+}
+
+void
+rc_to_error(
     rc const rc,
     buffer_ptr const buffer_ptr)
 {
