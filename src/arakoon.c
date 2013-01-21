@@ -50,7 +50,8 @@ typedef struct ArakoonSequenceItem ArakoonSequenceItem;
 typedef enum {
         ARAKOON_SEQUENCE_ITEM_TYPE_SET,
         ARAKOON_SEQUENCE_ITEM_TYPE_DELETE,
-        ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT
+        ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT,
+        ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT_EXISTS
 } ArakoonSequenceItemType;
 
 struct ArakoonSequenceItem {
@@ -75,6 +76,12 @@ struct ArakoonSequenceItem {
                         size_t value_size;
                         void * value;
                 } assert;
+
+                struct {
+                        size_t key_size;
+                        void * key;
+                } assert_exists;
+
         } data;
 
         ArakoonSequenceItem * next;
@@ -95,6 +102,9 @@ static void arakoon_sequence_item_free(ArakoonSequenceItem *item) {
                         arakoon_mem_free(item->data.assert.key);
                         arakoon_mem_free(item->data.assert.value);
                 }; break;
+                case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT_EXISTS: {
+                        arakoon_mem_free(item->data.assert_exists.key);
+                }; break;
                 default: {
                         _arakoon_log_fatal("Unknown sequence item type");
                         abort();
@@ -112,7 +122,7 @@ ArakoonSequence * arakoon_sequence_new(void) {
         ArakoonSequence * sequence = NULL;
 
         FUNCTION_ENTER(arakoon_sequence_new);
-        
+
         sequence = arakoon_mem_new(1, ArakoonSequence);
         RETURN_NULL_IF_NULL(sequence);
 
@@ -229,6 +239,20 @@ arakoon_rc arakoon_sequence_add_assert(ArakoonSequence *sequence,
         COPY_STRING_OPTION(assert, value);
 
         POSTLUDIUM(arakoon_sequence_add_assert);
+}
+
+arakoon_rc arakoon_sequence_add_assert_exists(ArakoonSequence *sequence,
+    const size_t key_size, const void * const key) {
+        PRELUDE(arakoon_sequence_add_assert_exists);
+
+        ASSERT_NON_NULL_RC(sequence);
+        ASSERT_NON_NULL_RC(key);
+
+        OUVERTURE(ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT_EXISTS);
+
+        COPY_STRING(assert_exists, key);
+
+        POSTLUDIUM(arakoon_sequence_add_assert_exists);
 }
 
 
@@ -1013,6 +1037,9 @@ static arakoon_rc _arakoon_sequence_impl(char code,
                                 I(ARAKOON_PROTOCOL_STRING_OPTION_LEN(
                                     item->data.assert.value, item->data.assert.value_size));
                         }; break;
+                        case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT_EXISTS: {
+                                I(ARAKOON_PROTOCOL_STRING_LEN(item->data.assert_exists.key_size));
+                        }; break;
                         default: {
                                 _arakoon_log_fatal("Invalid sequence type");
                                 abort();
@@ -1080,6 +1107,11 @@ static arakoon_rc _arakoon_sequence_impl(char code,
                                 WRITE_STRING(item->data.assert.key,
                                         item->data.assert.key_size);
                                 WRITE_UINT32(8);
+                        }; break;
+                        case ARAKOON_SEQUENCE_ITEM_TYPE_ASSERT_EXISTS: {
+                                WRITE_STRING(item->data.assert_exists.key,
+                                        item->data.assert_exists.key_size);
+                                WRITE_UINT32(15);
                         }; break;
                         default: {
                                 _arakoon_log_fatal("Invalid sequence type");
@@ -1177,6 +1209,54 @@ arakoon_rc arakoon_assert(ArakoonCluster *cluster,
                 arakoon_client_call_options_get_allow_dirty(options_));
         ARAKOON_PROTOCOL_WRITE_STRING(c, key, key_size);
         ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, value, value_size);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        WRITE_BYTES(master, command, len, rc, &timeout);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
+
+        HANDLE_ERROR(rc, master, cluster, &timeout);
+
+        return rc;
+}
+
+arakoon_rc arakoon_assert_exists(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const size_t key_size, const void * const key) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
+
+        FUNCTION_ENTER(arakoon_assert_exists);
+
+        _arakoon_cluster_reset_last_error(cluster);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(key);
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
+
+        ARAKOON_CLUSTER_GET_MASTER(cluster, master);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN
+                + ARAKOON_PROTOCOL_BOOL_LEN
+                + ARAKOON_PROTOCOL_STRING_LEN(key_size);
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x29, 0x00);
+        ARAKOON_PROTOCOL_WRITE_BOOL(c,
+                arakoon_client_call_options_get_allow_dirty(options_));
+        ARAKOON_PROTOCOL_WRITE_STRING(c, key, key_size);
 
         ASSERT_ALL_WRITTEN(command, c, len);
 
