@@ -7,8 +7,8 @@ compiler:
 before_script:
   - sudo apt-get update -qq
   - sudo apt-get install -qq check libbz2-1.0 libev4 valgrind
-  - wget http://linode2.nicolast.be/files/arakoon_1.5.0-pre-a1336_i386.deb
-  - sudo dpkg -i arakoon_1.5.0-pre-a1336_i386.deb
+  - wget http://linode2.nicolast.be/files/arakoon_1.5.0_i386.deb
+  - sudo dpkg -i arakoon_1.5.0_i386.deb
   - ./autogen.sh
 
 env: ARAKOON_EXECUTABLE_NAME=/usr/bin/arakoon
