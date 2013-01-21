@@ -169,7 +169,7 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
                 arakoon_mem_free(master);
 
                 _arakoon_log_info("Found master node %s",
-                        _arakoon_cluster_node_get_name(_arakoon_cluster_get_master(cluster)));
+                        _arakoon_cluster_node_get_name(node));
 
                 return ARAKOON_RC_SUCCESS;
         }
@@ -202,16 +202,18 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
 
         if(strcmp(_arakoon_cluster_node_get_name(node), master) != 0) {
                 rc = ARAKOON_RC_CLIENT_MASTER_NOT_FOUND;
+
+                _arakoon_log_debug("Unable to determine master node");
         }
         else {
                 rc = ARAKOON_RC_SUCCESS;
                 cluster->master = node;
+
+                _arakoon_log_debug("Found master node %s",
+                        _arakoon_cluster_node_get_name(node));
         }
 
         arakoon_mem_free(master);
-
-        _arakoon_log_debug("Found master node %s",
-                _arakoon_cluster_node_get_name(_arakoon_cluster_get_master(cluster)));
 
         return rc;
 }

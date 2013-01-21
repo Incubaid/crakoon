@@ -110,7 +110,7 @@ arakoon_rc _arakoon_nursery_routing_parse(
 
         rc = arakoon_nursery_routing_parse_clusters(version, &iter, &clusters);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
-                if(*clusters == NULL) {
+                if(clusters != NULL && *clusters == NULL) {
                         for(i = 0; clusters[i] != NULL; i++) {
                                 arakoon_cluster_free(clusters[i]);
                         }
