@@ -972,7 +972,7 @@ const char * arakoon_cluster_get_name(const ArakoonCluster * const cluster)
  */
 arakoon_rc arakoon_cluster_get_last_error(
     const ArakoonCluster * const cluster, size_t *len, const void ** data)
-    ARAKOON_GNUC_NONNULL ARAKOON_GNUC_PURE;
+    ARAKOON_GNUC_NONNULL;
 
 /* Add a node to the cluster
  *
