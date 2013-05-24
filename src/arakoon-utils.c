@@ -212,6 +212,11 @@ arakoon_rc arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks) {
         return ARAKOON_RC_SUCCESS;
 }
 
+const ArakoonMemoryHooks * arakoon_memory_get_hooks(void)
+{
+    return &memory_hooks;
+}
+
 static void * arakoon_memory_abort_malloc(size_t s)
         ARAKOON_GNUC_WARN_UNUSED_RESULT ARAKOON_GNUC_MALLOC;
 static void * arakoon_memory_abort_malloc(size_t s) {
