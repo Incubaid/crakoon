@@ -24,7 +24,6 @@
 #define ARAKOON_H_EXPORT_PROCEDURES 1
 #define ARAKOON_H_EXPORT_TYPES 1
 #include "arakoon.h"
-#include "arakoon-utils.h"
 
 #include "arakoonmm.hpp"
 
@@ -181,7 +180,7 @@ buffer::reset()
 {
     if (owner_)
     {
-        arakoon_mem_free(data_);
+        arakoon_memory_get_hooks()->free(data_);
         owner_ = false;
     }
 
@@ -654,7 +653,7 @@ cluster::rc_to_error(
 
             try
             {
-                data_cpy = arakoon_mem_malloc(size);
+                data_cpy = arakoon_memory_get_hooks()->malloc(size);
                 if (data_cpy == NULL)
                 {
                     throw std::bad_alloc();
@@ -665,7 +664,7 @@ cluster::rc_to_error(
             }
             catch (...)
             {
-                arakoon_mem_free(data_cpy);
+                arakoon_memory_get_hooks()->free(data_cpy);
                 throw;
             }
 
@@ -695,7 +694,7 @@ cluster::rc_to_error_no_exc(
 
             try
             {
-                data_cpy = arakoon_mem_malloc(size);
+                data_cpy = arakoon_memory_get_hooks()->malloc(size);
                 if (data_cpy == NULL)
                 {
                     throw std::bad_alloc();
@@ -706,7 +705,7 @@ cluster::rc_to_error_no_exc(
             }
             catch (...)
             {
-                arakoon_mem_free(data_cpy);
+                arakoon_memory_get_hooks()->free(data_cpy);
                 throw;
             }
         }
@@ -748,7 +747,7 @@ cluster::hello(
 
     std::shared_ptr<std::string> result_ptr(new std::string(result));
 
-    arakoon_mem_free(result);
+    arakoon_memory_get_hooks()->free(result);
     result = NULL;
 
     return result_ptr;
@@ -764,7 +763,7 @@ cluster::who_master(
 
     std::shared_ptr<std::string> result_ptr(new std::string(result));
 
-    arakoon_mem_free(result);
+    arakoon_memory_get_hooks()->free(result);
     result = NULL;
 
     return result_ptr;
