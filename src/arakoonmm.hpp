@@ -102,8 +102,9 @@ void memory_set_hooks(ArakoonMemoryHooks const * const hooks);
  * implementation is provided instead.
  *
  * For ease of use, class buffer provides a constructor to wrap a std::string,
- * without copying the data, so the lifetime of the string should exceed
- * the lifetime of the buffer.
+ * without copying the data. The ownership of the data remains with the string,
+ * so the caller should take care that the lifetime of the string exceeds the
+ * lifetime of the buffer.
  *
  * A buffer can be told to take ownership of the raw data provided to its
  * constructor, in which case it will free it on destruction using the
@@ -145,14 +146,14 @@ class buffer
     ~buffer();
 
     /**
-     * \brief If the buffer currently has ownership of its data, deallocate it,
-     *        and refer to 0 bytes of data instead.
+     * \brief If the buffer currently has ownership of its data, deallocate it.
+     *        Set the buffer to value 'None', with data == NULL and size == 0.
      */
     void reset();
 
     /**
-     * \brief If the buffer currently has ownership of its data, deallocate it,
-     *        and configure it with the specified parameters as if newly constructed.
+     * \brief If the buffer currently has ownership of its data, deallocate it.
+     *        Set the buffer to the specified parameters as if newly constructed.
      */
     void set(void * const data, std::size_t const size, bool const take_ownership);
 
