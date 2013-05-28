@@ -182,10 +182,10 @@ buffer::reset()
     if (owner_)
     {
         arakoon_mem_free(data_);
-        data_ = NULL;
         owner_ = false;
     }
 
+    data_ = NULL;
     size_ = 0;
 }
 
