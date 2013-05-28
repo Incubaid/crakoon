@@ -1,6 +1,7 @@
 # arakoon.h
 arakoon_strerror
 arakoon_utils_make_string
+arakoon_memory_get_hooks
 arakoon_memory_set_hooks
 arakoon_memory_get_abort_hooks
 
