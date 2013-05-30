@@ -420,6 +420,14 @@ typedef struct {
  */
 arakoon_rc arakoon_memory_set_hooks(const ArakoonMemoryHooks * const hooks)
     ARAKOON_GNUC_NONNULL;
+
+/**
+ * \brief Get registered memory-management functions used by Crakoon
+ *
+ * \since 1.2
+ */
+const ArakoonMemoryHooks * arakoon_memory_get_hooks(void);
+
 /**
  * Retrieve an #ArakoonMemoryHooks table containing wrappers around the system
  * *malloc(3)* and *realloc(3)* which `abort()` on allocation failure. Pass
