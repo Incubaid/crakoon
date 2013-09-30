@@ -405,7 +405,7 @@ arakoon_rc _arakoon_networking_connect(const struct addrinfo *addr, int *fd,
                         }
                 }
                 else {
-                        time_left = 0;
+                        time_left = -1;
                 }
 
                 j = 0;
