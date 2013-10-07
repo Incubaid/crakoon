@@ -63,6 +63,14 @@ int main(int argc, char **argv) {
         Node *fst = NULL, *n = NULL, *the_node = NULL;
         const char *name = NULL;
 
+        const char *multi_get_expected_values[] = {
+                "bar",
+                "testvalue",
+                "bar2",
+                NULL
+        };
+        const char **multi_get_expected_value = NULL;
+
         const ArakoonMemoryHooks hooks = {
                 check_arakoon_malloc,
                 check_arakoon_free,
@@ -153,13 +161,24 @@ int main(int argc, char **argv) {
         r0 = arakoon_value_list_new();
         rc = arakoon_value_list_add(r0, 3, "foo");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_value_list_add");
+        rc = arakoon_value_list_add(r0, 7, "testkey");
+        ABORT_IF_NOT_SUCCESS(rc, "arakoon_value_list_add");
         rc = arakoon_value_list_add(r0, 4, "foo2");
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_value_list_add");
         rc = arakoon_multi_get(c, options, r0, &r2);
         ABORT_IF_NOT_SUCCESS(rc, "arakoon_multi_get");
         arakoon_value_list_free(r0);
+
+        if(arakoon_value_list_size(r2) != 3) {
+                fprintf(stderr, "Unexpected result size: %zu, expected 3\n",
+                        arakoon_value_list_size(r2));
+                abort();
+        }
+
         iter0 = arakoon_value_list_create_iter(r2);
         ABORT_IF_NULL(iter0, "arakoon_value_list_create_iter");
+
+        multi_get_expected_value = multi_get_expected_values;
 
         FOR_ARAKOON_VALUE_ITER(iter0, &l0, &v0) {
                 s0 = (char *)check_arakoon_malloc((l0 + 1) * sizeof(char));
@@ -167,7 +186,20 @@ int main(int argc, char **argv) {
                 memcpy(s0, v0, l0);
                 s0[l0] = 0;
                 printf("Multi-get value: %s\n", s0);
+
+                if(strlen(*multi_get_expected_value) != l0) {
+                        fprintf(stderr, "Unexpected result length: %zd\n", l0);
+                        abort();
+                }
+
+                if(strncmp(s0, *multi_get_expected_value, l0) != 0) {
+                        fprintf(stderr, "Unexpected multi_get result: expected \"%s\", got \"%s\"\n",
+                                *multi_get_expected_value, s0);
+                        abort();
+                }
+
                 check_arakoon_free(s0);
+                multi_get_expected_value++;
         }
 
         arakoon_value_list_iter_free(iter0);
