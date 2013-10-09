@@ -203,7 +203,7 @@ ARAKOON_BEGIN_DECLS
         }                                                           \
         STMT_END
 
-#define ARAKOON_PROTOCOL_READ_STRING_SEQUENCE(fn, fd, a, rc, t)             \
+#define ARAKOON_PROTOCOL_READ_STRING_LIST(fd, a, rc, t)                     \
         STMT_START                                                          \
         uint32_t _rsl_cnt = 0, _rsl_i = 0;                                  \
         arakoon_rc _rsl_rc = 0;                                             \
@@ -223,7 +223,8 @@ ARAKOON_BEGIN_DECLS
                         }                                                   \
                         else {                                              \
                                 /* TODO This introduces a useless memcpy */ \
-                                _rsl_rc = fn(a, _rsl_l, _rsl_s);            \
+                                _rsl_rc = _arakoon_value_list_prepend(a,    \
+                                        _rsl_l, _rsl_s);                    \
                                 arakoon_mem_maybe_free(_rsl_l, _rsl_s);     \
                                                                             \
                                 if(!ARAKOON_RC_IS_SUCCESS(_rsl_rc)) {       \
@@ -235,12 +236,6 @@ ARAKOON_BEGIN_DECLS
                                                                             \
         rc = _rsl_rc;                                                       \
         STMT_END
-
-#define ARAKOON_PROTOCOL_READ_STRING_LIST(fd, a, rc, t)                                  \
-        ARAKOON_PROTOCOL_READ_STRING_SEQUENCE(_arakoon_value_list_prepend, fd, a, rc, t)
-
-#define ARAKOON_PROTOCOL_READ_STRING_ARRAY(fd, a, rc, t)                            \
-        ARAKOON_PROTOCOL_READ_STRING_SEQUENCE(arakoon_value_list_add, fd, a, rc, t)
 
 #define ARAKOON_PROTOCOL_READ_STRING_STRING_LIST(fd, a, rc, t)                     \
         STMT_START                                                                 \

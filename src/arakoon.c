@@ -646,7 +646,7 @@ arakoon_rc arakoon_multi_get(ArakoonCluster *cluster,
         *result = arakoon_value_list_new();
         RETURN_ENOMEM_IF_NULL(*result);
 
-        ARAKOON_PROTOCOL_READ_STRING_ARRAY(master, *result, rc, &timeout);
+        ARAKOON_PROTOCOL_READ_STRING_LIST(master, *result, rc, &timeout);
         if(!ARAKOON_RC_IS_SUCCESS(rc)) {
                 arakoon_value_list_free(*result);
                 *result = NULL;
