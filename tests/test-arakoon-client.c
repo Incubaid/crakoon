@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
                 s0[l0] = 0;
                 printf("Multi-get value: %s\n", s0);
 
-                if(strlen(*multi_get_expected_value) != l0) {
+                if(*multi_get_expected_value == NULL || strlen(*multi_get_expected_value) != l0) {
                         fprintf(stderr, "Unexpected result length: %zd\n", l0);
                         abort();
                 }
