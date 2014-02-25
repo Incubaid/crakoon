@@ -200,7 +200,8 @@ arakoon_rc arakoon_cluster_connect_master(ArakoonCluster * const cluster,
         rc = _arakoon_cluster_node_who_master(node, &timeout, &master);
         RETURN_IF_NOT_SUCCESS(rc);
 
-        if(strcmp(_arakoon_cluster_node_get_name(node), master) != 0) {
+        if(master == NULL ||
+	   strcmp(_arakoon_cluster_node_get_name(node), master) != 0) {
                 rc = ARAKOON_RC_CLIENT_MASTER_NOT_FOUND;
 
                 _arakoon_log_debug("Unable to determine master node");
