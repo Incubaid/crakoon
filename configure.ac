@@ -178,8 +178,6 @@ AC_PROG_MAKE_SET
 AC_PROG_LIBTOOL
 PKG_PROG_PKG_CONFIG(0.16)
 
-LT_INIT
-
 PKG_CHECK_MODULES([CHECK], [check >= 0.9.4])
 
 LIBTOOL_EXPORT_OPTIONS='-export-symbols-regex "^arakoon_.*"'
@@ -310,14 +308,18 @@ crakoon_save_CFLAGS=$CFLAGS
 CFLAGS=`echo $CFLAGS | sed 's/-Werror//g'`
 
 AC_HEADER_STDC
+AC_CHECK_HEADER_STDBOOL
 AC_CHECK_HEADERS([stdlib.h netdb.h sys/socket.h])
 AC_CHECK_HEADERS([stdint.h string.h unistd.h])
 AC_CHECK_HEADERS([errno.h])
+AC_CHECK_HEADERS([fcntl.h])
+AC_CHECK_HEADERS([limits.h])
 
 AC_CHECK_LIB([rt], [clock_gettime])
 
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
+AC_FUNC_ERROR_AT_LINE
 AC_CHECK_FUNCS([strerror vsnprintf])
 AC_CHECK_FUNCS([memset])
 AC_CHECK_FUNCS([socket])
