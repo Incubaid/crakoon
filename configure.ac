@@ -20,8 +20,8 @@ m4_define(crakoon_configure_ac)
 # On the unstable branches, crakoon_interface_age = 0
 
 m4_define([crakoon_major_version], [1])
-m4_define([crakoon_minor_version], [2])
-m4_define([crakoon_micro_version], [1])
+m4_define([crakoon_minor_version], [3])
+m4_define([crakoon_micro_version], [0])
 m4_define([crakoon_interface_age], [0])
 m4_define([crakoon_binary_age],
           [m4_eval(100 * crakoon_minor_version + crakoon_micro_version)])
