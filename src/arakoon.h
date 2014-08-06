@@ -1210,6 +1210,17 @@ arakoon_rc arakoon_version(ArakoonCluster *cluster,
     int32_t * major, int32_t * minor, int32_t * patch,
     char ** const version_info) ARAKOON_GNUC_NONNULL5(1, 3, 4, 5, 6)
     ARAKOON_GNUC_WARN_UNUSED_RESULT;
+/* Send a 'user_function' call to the server
+ *
+ * The resulting value will be stored at 'result' and its length at 'result_size'.
+ * 'result' should be released by the caller when no longer required.
+ */
+arakoon_rc arakoon_user_function(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const char * const user_function,
+    const size_t arg_size, const void * const arg,
+    size_t *result_size, void **result)
+    ARAKOON_GNUC_NONNULL4(1, 3, 6, 7) ARAKOON_GNUC_WARN_UNUSED_RESULT;
 
 #endif /* ARAKOON_H_EXPORT_PROCEDURES */
 
