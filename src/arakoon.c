@@ -1405,3 +1405,62 @@ arakoon_rc arakoon_version(ArakoonCluster *cluster,
 
         return rc;
 }
+
+arakoon_rc arakoon_user_function(ArakoonCluster *cluster,
+    const ArakoonClientCallOptions * const options,
+    const char * const user_function,
+    const size_t arg_size, const void * const arg,
+    size_t *result_size, void **result) {
+        size_t len = 0;
+        char *command = NULL, *c = NULL;
+        arakoon_rc rc = 0;
+        ArakoonClusterNode *master = NULL;
+        int timeout = ARAKOON_CLIENT_CALL_OPTIONS_DEFAULT_TIMEOUT;
+        size_t fun_size = 0;
+
+        FUNCTION_ENTER(arakoon_user_function);
+
+        ASSERT_NON_NULL_RC(cluster);
+        ASSERT_NON_NULL_RC(user_function);
+        ASSERT_NON_NULL_RC(result_size);
+        ASSERT_NON_NULL_RC(result);
+
+        *result_size = 0;
+        *result = NULL;
+
+        _arakoon_cluster_reset_last_error(cluster);
+
+        READ_OPTIONS;
+        timeout = arakoon_client_call_options_get_timeout(options_);
+
+        ARAKOON_CLUSTER_GET_MASTER(cluster, master);
+
+        fun_size = strlen(user_function);
+
+        len = ARAKOON_PROTOCOL_COMMAND_LEN
+                + ARAKOON_PROTOCOL_STRING_LEN(fun_size)
+                + ARAKOON_PROTOCOL_STRING_OPTION_LEN(arg, arg_size);
+
+        command = arakoon_mem_new(len, char);
+        RETURN_ENOMEM_IF_NULL(command);
+
+        c = command;
+
+        ARAKOON_PROTOCOL_WRITE_COMMAND(c, 0x15, 0x00);
+        ARAKOON_PROTOCOL_WRITE_STRING(c, user_function, fun_size);
+        ARAKOON_PROTOCOL_WRITE_STRING_OPTION(c, arg, arg_size);
+
+        ASSERT_ALL_WRITTEN(command, c, len);
+
+        WRITE_BYTES(master, command, len, rc, &timeout);
+        arakoon_mem_free(command);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_RC(master, rc, &timeout);
+
+        HANDLE_ERROR(rc, master, cluster, &timeout);
+        RETURN_IF_NOT_SUCCESS(rc);
+
+        ARAKOON_PROTOCOL_READ_STRING_OPTION(master, *result, *result_size, rc, &timeout);
+        return rc;
+}
